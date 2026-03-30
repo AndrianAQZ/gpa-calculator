@@ -72,10 +72,12 @@
 }
 
 body {
-  background: var(--background);
+  background: #f5f7fb;
   color: var(--foreground);
   margin: 0;
-  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Liquid Glass Design System */
@@ -92,45 +94,12 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, 
-    rgba(99, 102, 241, 0.1) 0%,
-    rgba(168, 85, 247, 0.08) 25%,
-    rgba(236, 72, 153, 0.06) 50%,
-    rgba(251, 146, 60, 0.08) 75%,
-    rgba(34, 197, 94, 0.1) 100%
-  );
+  background:
+    radial-gradient(circle at 15% 15%, rgba(64, 156, 255, 0.15), transparent 48%),
+    radial-gradient(circle at 85% 20%, rgba(142, 142, 147, 0.1), transparent 46%),
+    linear-gradient(180deg, #f8fbff 0%, #f3f6fb 100%);
   animation: none;
   z-index: -1;
-}
-
-@keyframes liquidGlassFlow {
-  0%, 100% {
-    background: linear-gradient(135deg, 
-      rgba(99, 102, 241, 0.1) 0%,
-      rgba(168, 85, 247, 0.08) 25%,
-      rgba(236, 72, 153, 0.06) 50%,
-      rgba(251, 146, 60, 0.08) 75%,
-      rgba(34, 197, 94, 0.1) 100%
-    );
-  }
-  33% {
-    background: linear-gradient(135deg, 
-      rgba(34, 197, 94, 0.1) 0%,
-      rgba(99, 102, 241, 0.08) 25%,
-      rgba(168, 85, 247, 0.06) 50%,
-      rgba(236, 72, 153, 0.08) 75%,
-      rgba(251, 146, 60, 0.1) 100%
-    );
-  }
-  66% {
-    background: linear-gradient(135deg, 
-      rgba(251, 146, 60, 0.1) 0%,
-      rgba(34, 197, 94, 0.08) 25%,
-      rgba(99, 102, 241, 0.06) 50%,
-      rgba(168, 85, 247, 0.08) 75%,
-      rgba(236, 72, 153, 0.1) 100%
-    );
-  }
 }
 
 .liquid-glass-container {
@@ -147,7 +116,7 @@ body {
 
 .liquid-glass-header {
   text-align: center;
-  margin-bottom: 3rem;
+  margin-bottom: 2.25rem;
   position: relative;
 }
 
@@ -195,43 +164,37 @@ body {
 
 .liquid-glass-title {
   font-size: clamp(2.25rem, 5vw, 3.25rem);
-  font-weight: 700;
-  background: linear-gradient(135deg, 
-    rgba(99, 102, 241, 0.9) 0%,
-    rgba(168, 85, 247, 0.8) 50%,
-    rgba(236, 72, 153, 0.9) 100%
-  );
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-weight: 650;
+  background: none;
+  -webkit-text-fill-color: inherit;
+  color: #1d1d1f;
   margin-bottom: 1rem;
-  text-shadow: 0 2px 14px rgba(99, 102, 241, 0.16);
-  letter-spacing: -0.03em;
+  text-shadow: none;
+  letter-spacing: -0.025em;
 }
 
 .liquid-glass-subtitle {
   font-size: 1.25rem;
-  color: rgba(55, 65, 81, 0.8);
+  color: rgba(29, 29, 31, 0.72);
   font-weight: 500;
   margin-bottom: 0.5rem;
 }
 
 .liquid-glass-subtitle-small {
   font-size: 1rem;
-  color: rgba(107, 114, 128, 0.7);
+  color: rgba(29, 29, 31, 0.72);
   font-weight: 400;
   margin-bottom: 1rem;
 }
 
 .liquid-glass-card {
-  background: rgba(255, 255, 255, 0.68);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 1.5rem;
   box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+    0 12px 34px rgba(15, 23, 42, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.76);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -254,10 +217,8 @@ body {
 .liquid-glass-card:hover {
   transform: none;
   box-shadow: 
-    0 12px 36px rgba(15, 23, 42, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
-  border-color: rgba(99, 102, 241, 0.25);
+    0 14px 36px rgba(15, 23, 42, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
 }
 
 .liquid-glass-main-card {
@@ -1503,52 +1464,6 @@ body {
 }
 
 /* Clean modern refinement */
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background: #f5f7fb;
-}
-
-.liquid-glass-background {
-  background:
-    radial-gradient(circle at 15% 15%, rgba(64, 156, 255, 0.15), transparent 48%),
-    radial-gradient(circle at 85% 20%, rgba(142, 142, 147, 0.1), transparent 46%),
-    linear-gradient(180deg, #f8fbff 0%, #f3f6fb 100%);
-}
-
-.liquid-glass-header {
-  margin-bottom: 2.25rem;
-}
-
-.liquid-glass-title {
-  background: none;
-  -webkit-text-fill-color: inherit;
-  color: #1d1d1f;
-  text-shadow: none;
-  font-weight: 650;
-  letter-spacing: -0.025em;
-}
-
-.liquid-glass-subtitle,
-.liquid-glass-subtitle-small {
-  color: rgba(29, 29, 31, 0.72);
-}
-
-.liquid-glass-card {
-  background: rgba(255, 255, 255, 0.82);
-  border-color: rgba(15, 23, 42, 0.08);
-  backdrop-filter: blur(24px);
-  box-shadow:
-    0 12px 34px rgba(15, 23, 42, 0.07),
-    inset 0 1px 0 rgba(255, 255, 255, 0.76);
-}
-
-.liquid-glass-card:hover {
-  box-shadow:
-    0 14px 36px rgba(15, 23, 42, 0.09),
-    inset 0 1px 0 rgba(255, 255, 255, 0.82);
-}
 
 .liquid-glass-subject-item,
 .liquid-glass-subject-panel,
