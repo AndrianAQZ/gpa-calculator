@@ -31,9 +31,11 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --glass-control-surface: rgba(255, 255, 255, 0.92);
-  --text-primary: #1d1d1f;
-  --focus-outline: rgba(0, 113, 227, 0.35);
+  --glass-control-surface: oklch(1 0 0 / 92%);
+  --text-primary: oklch(0.205 0 0);
+  --focus-outline: oklch(0.58 0.18 258 / 35%);
+  --primary-button-bg: #0071e3;
+  --primary-button-bg-hover: #0077ed;
 }
 
 .dark {
@@ -1495,12 +1497,12 @@ body {
 }
 
 .liquid-glass-primary-button {
-  background: #0071e3;
+  background: var(--primary-button-bg);
   box-shadow: 0 8px 20px rgba(0, 113, 227, 0.3);
 }
 
 .liquid-glass-primary-button:hover {
-  background: #0077ed;
+  background: var(--primary-button-bg-hover);
 }
 
 .liquid-glass-secondary-button {
