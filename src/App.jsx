@@ -23,8 +23,15 @@ const ELECTIVE_SUBJECTS = [
   'Visual Art'
 ]
 const LANGUAGE_SUBJECTS = new Set(['Spanish', 'Japanese'])
+const CORE_SUBJECT_WEIGHTS = {
+  'English': 1.0,
+  'Health and Physical Education': 0.6,
+  'History': 1.0,
+  'Mathematics': 1.0,
+  'Science': 1.0
+}
 const SUBJECTS = {
-  ...Object.fromEntries(CORE_SUBJECTS.map(subject => [subject, 1.0])),
+  ...CORE_SUBJECT_WEIGHTS,
   ...Object.fromEntries(ELECTIVE_SUBJECTS.map(subject => [subject, LANGUAGE_SUBJECTS.has(subject) ? 0.6 : 0.3]))
 }
 
@@ -64,23 +71,9 @@ const MAX_SUBJECTS = CORE_SUBJECTS.length + MAX_ELECTIVES
 const TERMS = ['Term 1', 'Term 2', 'Term 3', 'Term 4']
 const FINAL_TERMS = new Set(['Term 2', 'Term 4'])
 // Semester subjects (0.3 weight) - only have Term 1-2 OR Term 3-4
-const SEMESTER_SUBJECTS = new Set([
-  'Business',
-  'Design',
-  'Digital Solutions',
-  'Drama',
-  'English as an Other Language',
-  'Film, Television and New Media',
-  'Geography',
-  'Music',
-  'Physical Education (Extension)',
-  'Visual Art'
-])
+const SEMESTER_SUBJECTS = new Set(ELECTIVE_SUBJECTS.filter(subject => !LANGUAGE_SUBJECTS.has(subject)))
 // Three-term subjects (0.6 weight) - have Term 1, 2, 3 (no Term 4)
-const THREE_TERM_SUBJECTS = new Set([
-  'Spanish',
-  'Japanese'
-])
+const THREE_TERM_SUBJECTS = new Set([...LANGUAGE_SUBJECTS, 'Health and Physical Education'])
 const GOOGLE_DOC_ID = '1ICuIvuBC-uTpdKCgQWYNKqAfPfnOzOQPIyLYMoXhqvo'
 const GOOGLE_APPS_SCRIPT_URL = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbyjgbJvf_vTYx3WzoKqL0Tah8QsHYiPvaL3WPlThWpQAFMB9z0nvDKbqT2RigFMaYyI/exec'
 const LOCAL_STORAGE_KEY = 'gpa-calculator-state-v1'
@@ -162,6 +155,7 @@ function App() {
   const [initialTargetGPA, setInitialTargetGPA] = useState('')
   const [hasHydratedState, setHasHydratedState] = useState(false)
   const [persistenceWarning, setPersistenceWarning] = useState(false)
+  const selectedElectiveCount = selectedSubjects.filter(subject => !CORE_SUBJECTS.includes(subject)).length
 
   const handleSubjectToggle = (subject, checked) => {
     if (CORE_SUBJECTS.includes(subject)) {
@@ -172,7 +166,6 @@ function App() {
       if (selectedSubjects.includes(subject)) {
         return
       }
-      const selectedElectiveCount = selectedSubjects.filter(selected => !CORE_SUBJECTS.includes(selected)).length
       if (selectedElectiveCount < MAX_ELECTIVES) {
         const updatedSubjects = [...selectedSubjects, subject]
         setSelectedSubjects(updatedSubjects)
@@ -1434,7 +1427,7 @@ function App() {
                           id={subject}
                           checked={selectedSubjects.includes(subject)}
                           onCheckedChange={(checked) => handleSubjectToggle(subject, checked)}
-                          disabled={!selectedSubjects.includes(subject) && selectedSubjects.filter(selected => !CORE_SUBJECTS.includes(selected)).length >= MAX_ELECTIVES}
+                          disabled={!selectedSubjects.includes(subject) && selectedElectiveCount >= MAX_ELECTIVES}
                           className="liquid-glass-checkbox"
                         />
                         <label htmlFor={subject} className="liquid-glass-subject-label">
