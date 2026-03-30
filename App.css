@@ -1506,7 +1506,7 @@ body {
 .liquid-glass-secondary-button {
   background: rgba(255, 255, 255, 0.7);
   border-color: rgba(15, 23, 42, 0.1);
-  color: color-mix(in srgb, var(--text-primary) 90%, transparent);
+  color: var(--text-primary);
 }
 
 .liquid-glass-select:focus,
