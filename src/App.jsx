@@ -7,23 +7,33 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Calculator, GraduationCap, BookOpen, Target, Sparkles, Calendar, Save, FileText, Trophy, AlertTriangle, ToggleLeft, ToggleRight, Info } from 'lucide-react'
 import '../App.css'
 
-const SUBJECTS = {
-  'Visual Art': 0.3,
-  'Media': 0.3,
-  'Drama': 0.3,
-  'Music': 0.3,
-  'Spanish': 0.6,
-  'Japanese': 0.6,
-  'HPE': 0.6,
-  'Digital': 0.3,
-  'Design': 0.3,
-  'Math': 1.0,
-  'Science': 1.0,
+const CORE_SUBJECTS = ['English', 'Health and Physical Education', 'History', 'Mathematics', 'Science']
+const ELECTIVE_SUBJECTS = [
+  'Business',
+  'Design',
+  'Digital Solutions',
+  'Drama',
+  'English as an Other Language',
+  'Film, Television and New Media',
+  'Geography',
+  'Japanese',
+  'Music',
+  'Physical Education (Extension)',
+  'Spanish',
+  'Visual Art'
+]
+const LANGUAGE_SUBJECTS = new Set(['Spanish', 'Japanese'])
+const CORE_SUBJECT_WEIGHTS = {
   'English': 1.0,
-  'Humanities': 1.0
+  'Health and Physical Education': 0.6,
+  'History': 1.0,
+  'Mathematics': 1.0,
+  'Science': 1.0
 }
-
-const CORE_SUBJECTS = ['Math', 'Science', 'English', 'Humanities', 'HPE']
+const SUBJECTS = {
+  ...CORE_SUBJECT_WEIGHTS,
+  ...Object.fromEntries(ELECTIVE_SUBJECTS.map(subject => [subject, LANGUAGE_SUBJECTS.has(subject) ? 0.6 : 0.3]))
+}
 
 const createDefaultGradeModes = () =>
   CORE_SUBJECTS.reduce((acc, subject) => {
@@ -56,34 +66,28 @@ const getClosestGradeForPoints = (points) => {
 
   return closestGrade
 }
-const MAX_SUBJECTS = 8
+const MAX_ELECTIVES = 4
+const MAX_SUBJECTS = CORE_SUBJECTS.length + MAX_ELECTIVES
 const TERMS = ['Term 1', 'Term 2', 'Term 3', 'Term 4']
 const FINAL_TERMS = new Set(['Term 2', 'Term 4'])
 // Semester subjects (0.3 weight) - only have Term 1-2 OR Term 3-4
-const SEMESTER_SUBJECTS = new Set([
-  'Visual Art',
-  'Media',
-  'Drama',
-  'Music',
-  'Digital',
-  'Design'
-])
+const SEMESTER_SUBJECTS = new Set(ELECTIVE_SUBJECTS.filter(subject => !LANGUAGE_SUBJECTS.has(subject)))
 // Three-term subjects (0.6 weight) - have Term 1, 2, 3 (no Term 4)
-const THREE_TERM_SUBJECTS = new Set([
-  'Spanish',
-  'Japanese',
-  'HPE'
-])
+const THREE_TERM_SUBJECTS = new Set([...LANGUAGE_SUBJECTS, 'Health and Physical Education'])
 const GOOGLE_DOC_ID = '1ICuIvuBC-uTpdKCgQWYNKqAfPfnOzOQPIyLYMoXhqvo'
 const GOOGLE_APPS_SCRIPT_URL = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbyjgbJvf_vTYx3WzoKqL0Tah8QsHYiPvaL3WPlThWpQAFMB9z0nvDKbqT2RigFMaYyI/exec'
 const LOCAL_STORAGE_KEY = 'gpa-calculator-state-v1'
 const sanitizePersistedSubjects = (persistedSubjects) => {
   if (!Array.isArray(persistedSubjects)) {
-    return []
+    return [...CORE_SUBJECTS]
   }
 
   const availableSubjects = Object.keys(SUBJECTS)
-  return [...new Set(persistedSubjects.filter(subject => availableSubjects.includes(subject)))].slice(0, MAX_SUBJECTS)
+  const uniquePersisted = [...new Set(persistedSubjects.filter(subject => availableSubjects.includes(subject)))]
+  const persistedElectives = uniquePersisted
+    .filter(subject => !CORE_SUBJECTS.includes(subject))
+    .slice(0, MAX_ELECTIVES)
+  return [...CORE_SUBJECTS, ...persistedElectives]
 }
 
 // Content moderation function
@@ -151,19 +155,24 @@ function App() {
   const [initialTargetGPA, setInitialTargetGPA] = useState('')
   const [hasHydratedState, setHasHydratedState] = useState(false)
   const [persistenceWarning, setPersistenceWarning] = useState(false)
+  const selectedElectiveCount = selectedSubjects.filter(subject => !CORE_SUBJECTS.includes(subject)).length
 
   const handleSubjectToggle = (subject, checked) => {
+    if (CORE_SUBJECTS.includes(subject)) {
+      return
+    }
+
     if (checked) {
       if (selectedSubjects.includes(subject)) {
         return
       }
-      if (selectedSubjects.length < MAX_SUBJECTS) {
+      if (selectedElectiveCount < MAX_ELECTIVES) {
         const updatedSubjects = [...selectedSubjects, subject]
         setSelectedSubjects(updatedSubjects)
         setGradeEntryModes(prev => ({ ...prev, [subject]: 'terms' }))
         setActiveSubject(subject)
       } else {
-        alert(`You can select a maximum of ${MAX_SUBJECTS} subjects.`)
+        alert(`You can select a maximum of ${MAX_ELECTIVES} elective subjects.`)
       }
     } else {
       const updatedSubjects = selectedSubjects.filter(s => s !== subject)
@@ -1371,7 +1380,7 @@ function App() {
                 <Sparkles className="liquid-glass-sparkle" />
               </div>
               <h1 className="liquid-glass-title">GPA Calculator</h1>
-              <p className="liquid-glass-subtitle">Select the subjects you're currently taking (Max: {MAX_SUBJECTS})</p>
+              <p className="liquid-glass-subtitle">Core subjects are included automatically. Choose up to {MAX_ELECTIVES} electives.</p>
               <p className="liquid-glass-subtitle-small">Choose between term-based calculation or direct final grade entry for each subject</p>
               <p className="liquid-glass-subtitle-small">Your subject choices and grades are typically saved automatically on this device.</p>
               {persistenceWarning ? (
@@ -1386,26 +1395,48 @@ function App() {
                   Choose Your Subjects
                 </div>
                 <p className="liquid-glass-card-description">
-                  Select all the subjects you're enrolled in this semester
+                  Select your electives. Core subjects remain selected.
                 </p>
               </div>
               <div className="liquid-glass-card-content">
-                <div className="liquid-glass-subjects-grid">
-                  {Object.entries(SUBJECTS).map(([subject, weight]) => (
-                    <div key={subject} className={`liquid-glass-subject-item${selectedSubjects.includes(subject) ? ' is-selected' : ''}`}>
-                      <Checkbox
-                        id={subject}
-                        checked={selectedSubjects.includes(subject)}
-                        onCheckedChange={(checked) => handleSubjectToggle(subject, checked)}
-                        disabled={!selectedSubjects.includes(subject) && selectedSubjects.length >= MAX_SUBJECTS}
-                        className="liquid-glass-checkbox"
-                      />
-                      <label htmlFor={subject} className="liquid-glass-subject-label">
-                        <div className="liquid-glass-subject-name">{subject}</div>
-                        <div className="liquid-glass-subject-weight">Weight: {weight}</div>
-                      </label>
-                    </div>
-                  ))}
+                <div className="liquid-glass-subject-section">
+                  <h3 className="liquid-glass-subject-section-title">Core Subjects</h3>
+                  <div className="liquid-glass-subjects-grid">
+                    {CORE_SUBJECTS.map(subject => (
+                      <div key={subject} className="liquid-glass-subject-item is-selected is-core">
+                        <Checkbox
+                          id={subject}
+                          checked
+                          disabled
+                          className="liquid-glass-checkbox"
+                        />
+                        <label htmlFor={subject} className="liquid-glass-subject-label">
+                          <div className="liquid-glass-subject-name">{subject}</div>
+                          <div className="liquid-glass-subject-weight">Weight: {SUBJECTS[subject]}</div>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="liquid-glass-subject-section">
+                  <h3 className="liquid-glass-subject-section-title">Elective Subjects (choose up to {MAX_ELECTIVES})</h3>
+                  <div className="liquid-glass-subjects-grid">
+                    {ELECTIVE_SUBJECTS.map(subject => (
+                      <div key={subject} className={`liquid-glass-subject-item${selectedSubjects.includes(subject) ? ' is-selected' : ''}`}>
+                        <Checkbox
+                          id={subject}
+                          checked={selectedSubjects.includes(subject)}
+                          onCheckedChange={(checked) => handleSubjectToggle(subject, checked)}
+                          disabled={!selectedSubjects.includes(subject) && selectedElectiveCount >= MAX_ELECTIVES}
+                          className="liquid-glass-checkbox"
+                        />
+                        <label htmlFor={subject} className="liquid-glass-subject-label">
+                          <div className="liquid-glass-subject-name">{subject}</div>
+                          <div className="liquid-glass-subject-weight">Weight: {SUBJECTS[subject]}</div>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
