@@ -99,7 +99,7 @@ body {
     rgba(251, 146, 60, 0.08) 75%,
     rgba(34, 197, 94, 0.1) 100%
   );
-  animation: liquidGlassFlow 28s ease-in-out infinite;
+  animation: liquidGlassFlow 28s ease-in-out infinite; /* Slower cycle keeps background subtle and less distracting */
   z-index: -1;
 }
 

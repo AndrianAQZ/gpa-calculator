@@ -40,6 +40,8 @@ const GRADES = {
 }
 
 const GRADE_OPTIONS = Object.keys(GRADES)
+const MIN_GPA_VALUE = 0.1
+const MAX_GPA_VALUE = 15
 const getClosestGradeForPoints = (points) => {
   let closestGrade = 'F-'
   let closestDiff = Infinity
@@ -75,6 +77,14 @@ const THREE_TERM_SUBJECTS = new Set([
 const GOOGLE_DOC_ID = '1ICuIvuBC-uTpdKCgQWYNKqAfPfnOzOQPIyLYMoXhqvo'
 const GOOGLE_APPS_SCRIPT_URL = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbyjgbJvf_vTYx3WzoKqL0Tah8QsHYiPvaL3WPlThWpQAFMB9z0nvDKbqT2RigFMaYyI/exec'
 const LOCAL_STORAGE_KEY = 'gpa-calculator-state-v1'
+const sanitizePersistedSubjects = (persistedSubjects) => {
+  if (!Array.isArray(persistedSubjects)) {
+    return []
+  }
+
+  const availableSubjects = Object.keys(SUBJECTS)
+  return [...new Set(persistedSubjects.filter(subject => availableSubjects.includes(subject)))].slice(0, MAX_SUBJECTS)
+}
 
 // Content moderation function
 const isInappropriateName = (name) => {
@@ -140,6 +150,7 @@ function App() {
   const [showTargetGPADialog, setShowTargetGPADialog] = useState(false)
   const [initialTargetGPA, setInitialTargetGPA] = useState('')
   const [hasHydratedState, setHasHydratedState] = useState(false)
+  const [persistenceWarning, setPersistenceWarning] = useState(false)
 
   const handleSubjectToggle = (subject, checked) => {
     if (checked) {
@@ -727,10 +738,7 @@ function App() {
       }
 
       const parsed = JSON.parse(raw)
-      const availableSubjects = Object.keys(SUBJECTS)
-      const persistedSubjects = Array.isArray(parsed?.selectedSubjects)
-        ? [...new Set(parsed.selectedSubjects.filter(subject => availableSubjects.includes(subject)))].slice(0, MAX_SUBJECTS)
-        : []
+      const persistedSubjects = sanitizePersistedSubjects(parsed?.selectedSubjects)
       const safeSelectedSubjects = persistedSubjects.length > 0 ? persistedSubjects : [...CORE_SUBJECTS]
 
       const safeCurrentStep = parsed?.currentStep === 'gradeEntry' ? 'gradeEntry' : 'selection'
@@ -769,7 +777,7 @@ function App() {
       if (Array.isArray(parsed?.targetGPAs)) {
         const safeTargetGPAs = [...new Set(parsed.targetGPAs)]
           .map(value => Number(value))
-          .filter(value => Number.isFinite(value) && value > 0 && value <= 15)
+          .filter(value => Number.isFinite(value) && value >= MIN_GPA_VALUE && value <= MAX_GPA_VALUE)
           .sort((a, b) => a - b)
         if (safeTargetGPAs.length > 0) {
           setTargetGPAs(safeTargetGPAs)
@@ -783,7 +791,8 @@ function App() {
         setActiveSubject(safeSelectedSubjects[0] || null)
       }
     } catch (error) {
-      console.error('Failed to restore calculator state:', error)
+      console.error('Failed to restore calculator state. Starting with default settings.', error)
+      setPersistenceWarning(true)
     } finally {
       setHasHydratedState(true)
     }
@@ -812,6 +821,7 @@ function App() {
       window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToPersist))
     } catch (error) {
       console.error('Failed to save calculator state:', error)
+      setPersistenceWarning(true)
     }
   }, [
     hasHydratedState,
@@ -883,7 +893,7 @@ function App() {
   const handleTargetGPASubmit = () => {
     const gpaValue = parseFloat(initialTargetGPA)
     
-    if (initialTargetGPA && gpaValue && gpaValue > 0 && gpaValue <= 15) {
+    if (initialTargetGPA && gpaValue && gpaValue >= MIN_GPA_VALUE && gpaValue <= MAX_GPA_VALUE) {
       // Check if already exists (with some tolerance for floating point)
       const exists = targetGPAs.some(target => Math.abs(target - gpaValue) < 0.01)
       if (!exists) {
@@ -1268,8 +1278,8 @@ function App() {
                 return
               }
 
-              if (gpaValue <= 0 || gpaValue > 15) {
-                alert('Please enter a GPA between 0.1 and 15')
+              if (gpaValue < MIN_GPA_VALUE || gpaValue > MAX_GPA_VALUE) {
+                alert(`Please enter a GPA between ${MIN_GPA_VALUE} and ${MAX_GPA_VALUE}`)
                 return
               }
 
@@ -1363,7 +1373,10 @@ function App() {
               <h1 className="liquid-glass-title">GPA Calculator</h1>
               <p className="liquid-glass-subtitle">Select the subjects you're currently taking (Max: {MAX_SUBJECTS})</p>
               <p className="liquid-glass-subtitle-small">Choose between term-based calculation or direct final grade entry for each subject</p>
-              <p className="liquid-glass-subtitle-small">Your subject choices and grades are saved automatically on this device.</p>
+              <p className="liquid-glass-subtitle-small">Your subject choices and grades are typically saved automatically on this device.</p>
+              {persistenceWarning ? (
+                <p className="liquid-glass-subtitle-small">Heads up: your browser blocked local saving, so progress may not persist after refresh.</p>
+              ) : null}
             </div>
 
             <div className="liquid-glass-card liquid-glass-main-card">
