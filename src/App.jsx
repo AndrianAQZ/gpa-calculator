@@ -23,6 +23,8 @@ const ELECTIVE_SUBJECTS = [
   'Visual Art'
 ]
 const LANGUAGE_SUBJECTS = new Set(['Spanish', 'Japanese'])
+const DEFAULT_ELECTIVE_WEIGHT = 0.3
+const LANGUAGE_ELECTIVE_WEIGHT = 0.6
 const CORE_SUBJECT_WEIGHTS = {
   'English': 1.0,
   'Health and Physical Education': 0.6,
@@ -32,7 +34,7 @@ const CORE_SUBJECT_WEIGHTS = {
 }
 const SUBJECTS = {
   ...CORE_SUBJECT_WEIGHTS,
-  ...Object.fromEntries(ELECTIVE_SUBJECTS.map(subject => [subject, LANGUAGE_SUBJECTS.has(subject) ? 0.6 : 0.3]))
+  ...Object.fromEntries(ELECTIVE_SUBJECTS.map(subject => [subject, LANGUAGE_SUBJECTS.has(subject) ? LANGUAGE_ELECTIVE_WEIGHT : DEFAULT_ELECTIVE_WEIGHT]))
 }
 
 const createDefaultGradeModes = () =>
@@ -1420,6 +1422,9 @@ function App() {
                 </div>
                 <div className="liquid-glass-subject-section">
                   <h3 className="liquid-glass-subject-section-title">Elective Subjects (choose up to {MAX_ELECTIVES})</h3>
+                  <p className="liquid-glass-subject-section-meta">
+                    Most electives are weighted at {DEFAULT_ELECTIVE_WEIGHT}. Spanish and Japanese are weighted at {LANGUAGE_ELECTIVE_WEIGHT}.
+                  </p>
                   <div className="liquid-glass-subjects-grid">
                     {ELECTIVE_SUBJECTS.map(subject => (
                       <div key={subject} className={`liquid-glass-subject-item${selectedSubjects.includes(subject) ? ' is-selected' : ''}`}>
