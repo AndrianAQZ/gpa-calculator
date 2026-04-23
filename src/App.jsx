@@ -71,6 +71,20 @@ const getClosestGradeForPoints = (points) => {
 const MAX_ELECTIVES = 4
 const MAX_SUBJECTS = CORE_SUBJECTS.length + MAX_ELECTIVES
 const TERMS = ['Term 1', 'Term 2', 'Term 3', 'Term 4']
+const QUEENSLAND_TERM_DATES = {
+  2026: [
+    { term: 'Term 1', start: '2026-01-27', end: '2026-04-02' },
+    { term: 'Term 2', start: '2026-04-20', end: '2026-06-26' },
+    { term: 'Term 3', start: '2026-07-13', end: '2026-09-18' },
+    { term: 'Term 4', start: '2026-10-06', end: '2026-12-11' }
+  ],
+  2027: [
+    { term: 'Term 1', start: '2027-01-27', end: '2027-03-25' },
+    { term: 'Term 2', start: '2027-04-12', end: '2027-06-25' },
+    { term: 'Term 3', start: '2027-07-12', end: '2027-09-17' },
+    { term: 'Term 4', start: '2027-10-05', end: '2027-12-10' }
+  ]
+}
 const FINAL_TERMS = new Set(['Term 2', 'Term 4'])
 // Semester subjects (0.3 weight) - only have Term 1-2 OR Term 3-4
 const SEMESTER_SUBJECTS = new Set(ELECTIVE_SUBJECTS.filter(subject => !LANGUAGE_SUBJECTS.has(subject)))
@@ -79,6 +93,37 @@ const THREE_TERM_SUBJECTS = new Set([...LANGUAGE_SUBJECTS, 'Health and Physical 
 const GOOGLE_DOC_ID = '1ICuIvuBC-uTpdKCgQWYNKqAfPfnOzOQPIyLYMoXhqvo'
 const GOOGLE_APPS_SCRIPT_URL = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbyjgbJvf_vTYx3WzoKqL0Tah8QsHYiPvaL3WPlThWpQAFMB9z0nvDKbqT2RigFMaYyI/exec'
 const LOCAL_STORAGE_KEY = 'gpa-calculator-state-v1'
+const createLocalDate = (dateString) => {
+  const [year, month, day] = dateString.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+const getDetectedTermInfo = (date = new Date()) => {
+  const year = date.getFullYear()
+  const ranges = QUEENSLAND_TERM_DATES[year]
+  if (ranges) {
+    const today = new Date(year, date.getMonth(), date.getDate())
+    const activeRange = ranges.find(({ start, end }) => today >= createLocalDate(start) && today <= createLocalDate(end))
+    if (activeRange) {
+      return { term: activeRange.term, source: 'Queensland term dates', status: 'in-term' }
+    }
+
+    const upcomingRange = ranges.find(({ start }) => today < createLocalDate(start))
+    if (upcomingRange) {
+      return { term: upcomingRange.term, source: 'Queensland term dates', status: 'upcoming' }
+    }
+
+    return { term: ranges[ranges.length - 1].term, source: 'Queensland term dates', status: 'after-year' }
+  }
+
+  const month = date.getMonth()
+  if (month <= 2) return { term: 'Term 1', source: 'month estimate', status: 'estimated' }
+  if (month <= 5) return { term: 'Term 2', source: 'month estimate', status: 'estimated' }
+  if (month <= 8) return { term: 'Term 3', source: 'month estimate', status: 'estimated' }
+  return { term: 'Term 4', source: 'month estimate', status: 'estimated' }
+}
+const getDetectedTerm = () => getDetectedTermInfo().term
+
 const sanitizePersistedSubjects = (persistedSubjects) => {
   if (!Array.isArray(persistedSubjects)) {
     return [...CORE_SUBJECTS]
@@ -135,7 +180,7 @@ const isInappropriateName = (name) => {
 function App() {
   const [currentStep, setCurrentStep] = useState('selection')
   const [selectedSubjects, setSelectedSubjects] = useState(() => [...CORE_SUBJECTS])
-  const [currentTerm, setCurrentTerm] = useState(TERMS[0])
+  const [currentTerm, setCurrentTerm] = useState(() => getDetectedTerm())
   const [gradeEntryModes, setGradeEntryModes] = useState(() => createDefaultGradeModes()) // { subject: 'terms' | 'final' }
   const [termGrades, setTermGrades] = useState({}) // { subject: { 'Term 1': 'A', 'Term 2': 'B+', ... } }
   const [directFinalGrades, setDirectFinalGrades] = useState({}) // { subject: 'A+' }
@@ -145,6 +190,7 @@ function App() {
   const [yearlyGPA, setYearlyGPA] = useState(null)
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [studentName, setStudentName] = useState('')
+  const [studentYearLevel, setStudentYearLevel] = useState('Year 8')
   const [isSaving, setIsSaving] = useState(false)
   const [saveAttempts, setSaveAttempts] = useState(0)
   const [userDismissedDialog, setUserDismissedDialog] = useState(false)
@@ -157,7 +203,11 @@ function App() {
   const [initialTargetGPA, setInitialTargetGPA] = useState('')
   const [hasHydratedState, setHasHydratedState] = useState(false)
   const [persistenceWarning, setPersistenceWarning] = useState(false)
+  const [termSelectionMode, setTermSelectionMode] = useState('auto')
   const selectedElectiveCount = selectedSubjects.filter(subject => !CORE_SUBJECTS.includes(subject)).length
+  const selectedElectives = selectedSubjects.filter(subject => !CORE_SUBJECTS.includes(subject))
+  const detectedTermInfo = getDetectedTermInfo()
+  const detectedTerm = detectedTermInfo.term
 
   const handleSubjectToggle = (subject, checked) => {
     if (CORE_SUBJECTS.includes(subject)) {
@@ -616,6 +666,16 @@ function App() {
     }))
   }
 
+  const handleCurrentTermChange = (term) => {
+    setCurrentTerm(term)
+    setTermSelectionMode(term === detectedTerm ? 'auto' : 'manual')
+  }
+
+  const handleUseDetectedTerm = () => {
+    setCurrentTerm(detectedTerm)
+    setTermSelectionMode('auto')
+  }
+
   const saveToGoogleDoc = async () => {
     if (!studentName.trim()) {
       alert('Please enter your name before saving!')
@@ -624,7 +684,7 @@ function App() {
 
     // Check for inappropriate name
     if (isInappropriateName(studentName)) {
-      alert('⚠️ The name you entered appears to be inappropriate or invalid. Please use your real name.')
+      alert('The name you entered appears to be inappropriate or invalid. Please use your real name.')
       return
     }
 
@@ -654,9 +714,14 @@ function App() {
 
       const payload = {
         studentName: studentName.trim(),
+        yearLevel: studentYearLevel,
         currentTerm,
+        detectedTerm,
+        termSelectionMode,
         gpa: gpa !== null ? Number(gpa.toFixed(2)) : null,
         yearlyGpa: yearlyGPA !== null ? Number(yearlyGPA.toFixed(2)) : null,
+        completedSubjects: enteredFinalGradeCount,
+        totalSubjects: selectedSubjects.length,
         subjects: subjectSummaries,
         timestamp: new Date().toISOString(),
         googleDocId: GOOGLE_DOC_ID
@@ -705,12 +770,100 @@ function App() {
       
       // Show specific error message from server
       if (errorMessage.includes('inappropriate') || errorMessage.includes('invalid')) {
-        alert(`⚠️ ${errorMessage}`)
+        alert(errorMessage)
       } else {
-        alert(`❌ Failed to save to Google Doc.\n\n${errorMessage}`)
+        alert(`Failed to save to Google Doc.\n\n${errorMessage}`)
       }
       
       // Close the doc window if save failed
+      if (docWindow && !docWindow.closed) {
+        docWindow.close()
+      }
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const saveSnapshotToGoogleDoc = async () => {
+    if (!studentName.trim()) {
+      alert('Please enter your name before saving!')
+      return
+    }
+
+    if (isInappropriateName(studentName)) {
+      alert('The name you entered appears to be inappropriate or invalid. Please use your real name.')
+      return
+    }
+
+    if (!GOOGLE_APPS_SCRIPT_URL) {
+      alert('Google Apps Script URL is not configured. Please set VITE_GOOGLE_APPS_SCRIPT_URL in your environment.')
+      return
+    }
+
+    setIsSaving(true)
+    const docUrl = `https://docs.google.com/document/d/${GOOGLE_DOC_ID}/edit`
+    const docWindow = window.open(docUrl, '_blank', 'noopener,noreferrer')
+
+    try {
+      const subjectSummaries = selectedSubjects.map(subject => ({
+        subject,
+        weight: SUBJECTS[subject],
+        entryMode: gradeEntryModes[subject] || 'terms',
+        finalGrade: finalGrades[subject]?.grade ?? null,
+        finalPoints: finalGrades[subject]?.points ?? null,
+        termGrades: termGrades[subject] ?? {},
+        directFinalGrade: directFinalGrades[subject] ?? null,
+        semesterFinalGrade: termFinalGrades[subject] ?? null
+      }))
+
+      const payload = {
+        studentName: studentName.trim(),
+        yearLevel: studentYearLevel,
+        currentTerm,
+        detectedTerm,
+        termSelectionMode,
+        gpa: gpa !== null ? Number(gpa.toFixed(2)) : null,
+        yearlyGpa: yearlyGPA !== null ? Number(yearlyGPA.toFixed(2)) : null,
+        completedSubjects: enteredFinalGradeCount,
+        totalSubjects: selectedSubjects.length,
+        subjects: subjectSummaries,
+        timestamp: new Date().toISOString(),
+        googleDocId: GOOGLE_DOC_ID
+      }
+
+      await fetch(GOOGLE_APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          data: JSON.stringify(payload)
+        })
+      })
+
+      alert(`Sent ${studentName}'s ${studentYearLevel} ${currentTerm} GPA (${gpa?.toFixed(2)}) to the Google Doc table. If it does not appear, redeploy the Apps Script with Anyone access.`)
+
+      if (!docWindow || docWindow.closed || typeof docWindow.closed === 'undefined') {
+        const openNow = confirm('The Google Doc popup was blocked. Click OK to open it now.')
+        if (openNow) {
+          window.open(docUrl, '_blank', 'noopener,noreferrer')
+        }
+      }
+
+      setShowSaveDialog(false)
+      setStudentName('')
+      setSaveAttempts(0)
+    } catch (error) {
+      console.error('Failed to save GPA to Google Doc:', error)
+      const errorMessage = error.message || 'Unknown error occurred'
+
+      if (errorMessage.includes('inappropriate') || errorMessage.includes('invalid')) {
+        alert(errorMessage)
+      } else {
+        alert(`Failed to save to Google Doc.\n\n${errorMessage}`)
+      }
+
       if (docWindow && !docWindow.closed) {
         docWindow.close()
       }
@@ -732,7 +885,7 @@ function App() {
       case 1:
         return "Want to save this now? It can help when you compare progress later."
       case 2:
-        return "No pressure—saving now just makes it easier to come back to these results."
+        return "No pressure - saving now just makes it easier to come back to these results."
       case 3:
         return "You can keep going without saving, or save a copy to your Google Doc."
       default:
@@ -753,7 +906,6 @@ function App() {
       const safeSelectedSubjects = persistedSubjects.length > 0 ? persistedSubjects : [...CORE_SUBJECTS]
 
       const safeCurrentStep = parsed?.currentStep === 'gradeEntry' ? 'gradeEntry' : 'selection'
-      const safeCurrentTerm = TERMS.includes(parsed?.currentTerm) ? parsed.currentTerm : TERMS[0]
       const safeCalculationMode = parsed?.calculationMode === 'future' ? 'future' : 'current'
 
       const persistedGradeModes = typeof parsed?.gradeEntryModes === 'object' && parsed.gradeEntryModes !== null
@@ -768,6 +920,11 @@ function App() {
         setSelectedSubjects(safeSelectedSubjects)
       }
       setCurrentStep(safeCurrentStep)
+      const safeTermSelectionMode = parsed?.termSelectionMode === 'manual' ? 'manual' : 'auto'
+      const safeCurrentTerm = safeTermSelectionMode === 'manual' && TERMS.includes(parsed?.currentTerm)
+        ? parsed.currentTerm
+        : getDetectedTerm()
+      setTermSelectionMode(safeTermSelectionMode)
       setCurrentTerm(safeCurrentTerm)
       setCalculationMode(safeCalculationMode)
       setGradeEntryModes(hydratedGradeModes)
@@ -794,6 +951,9 @@ function App() {
           setTargetGPAs(safeTargetGPAs)
         }
       }
+      if (typeof parsed?.studentYearLevel === 'string' && parsed.studentYearLevel.trim()) {
+        setStudentYearLevel(parsed.studentYearLevel)
+      }
 
       const persistedActiveSubject = parsed?.activeSubject
       if (persistedActiveSubject && safeSelectedSubjects.includes(persistedActiveSubject)) {
@@ -802,12 +962,23 @@ function App() {
         setActiveSubject(safeSelectedSubjects[0] || null)
       }
     } catch (error) {
-      console.error('Failed to restore calculator state. Starting with default settings.', error)
+        console.error('Failed to restore calculator state. Starting with default settings.', error)
       setPersistenceWarning(true)
     } finally {
       setHasHydratedState(true)
     }
   }, [])
+
+  useEffect(() => {
+    const syncDetectedTerm = () => {
+      if (termSelectionMode === 'auto') {
+        setCurrentTerm(getDetectedTerm())
+      }
+    }
+    syncDetectedTerm()
+    const intervalId = window.setInterval(syncDetectedTerm, 60 * 60 * 1000)
+    return () => window.clearInterval(intervalId)
+  }, [termSelectionMode])
 
   useEffect(() => {
     if (!hasHydratedState) {
@@ -825,7 +996,9 @@ function App() {
       expectedGrades,
       calculationMode,
       targetGPAs,
-      activeSubject
+      activeSubject,
+      termSelectionMode,
+      studentYearLevel
     }
 
     try {
@@ -846,7 +1019,9 @@ function App() {
     expectedGrades,
     calculationMode,
     targetGPAs,
-    activeSubject
+    activeSubject,
+    termSelectionMode,
+    studentYearLevel
   ])
 
   // Update final grades when term grades or direct final grades change
@@ -870,20 +1045,6 @@ function App() {
     }
   }, [finalGrades, selectedSubjects])
 
-  // Show save dialog when GPA is calculated and all subjects have grades
-  useEffect(() => {
-    if (calculationMode !== 'current') {
-      return
-    }
-
-    if (yearlyGPA && yearlyGPA > 0 && selectedSubjects.length > 0 && !userDismissedDialog) {
-      const allSubjectsHaveGrades = selectedSubjects.every(subject => finalGrades[subject])
-      if (allSubjectsHaveGrades && saveAttempts < 5) {
-        setTimeout(() => setShowSaveDialog(true), 1000)
-      }
-    }
-  }, [yearlyGPA, finalGrades, selectedSubjects, saveAttempts, userDismissedDialog, calculationMode])
-
   useEffect(() => {
     if (selectedSubjects.length === 0) {
       setActiveSubject(null)
@@ -897,7 +1058,9 @@ function App() {
 
   const proceedToGradeEntry = () => {
     if (selectedSubjects.length > 0) {
-      setShowTargetGPADialog(true)
+      setShowTargetGPADialog(false)
+      setActiveSubject(selectedSubjects[0])
+      setCurrentStep('gradeEntry')
     }
   }
 
@@ -926,7 +1089,8 @@ function App() {
   const resetCalculator = () => {
     setCurrentStep('selection')
     setSelectedSubjects([...CORE_SUBJECTS])
-    setCurrentTerm(TERMS[0])
+    setCurrentTerm(getDetectedTerm())
+    setTermSelectionMode('auto')
     setGradeEntryModes(createDefaultGradeModes())
     setTermGrades({})
     setDirectFinalGrades({})
@@ -1215,7 +1379,7 @@ function App() {
     const steps = isFuture
       ? [
           'Choose the term you are in at the top so we know which grades are already locked in.',
-          'Enter any completed term grades as usual. For upcoming or unfinished terms, pick expected grades under “Predict upcoming terms”.',
+          'Enter any completed term grades as usual. For upcoming or unfinished terms, pick expected grades under "Predict upcoming terms".',
           'Watch the Predicted GPA and Target GPA cards to see how tweaks to future grades change your path.'
         ]
       : [
@@ -1224,8 +1388,8 @@ function App() {
           'Review the Target GPA section to check what grades are still needed to hit each goal, then save to Google Doc if you want a record.'
         ]
     const tip = isFuture
-      ? 'Tip: Missing a term grade? Leave it blank and enter an expected grade instead—the predictor will fill the gap.'
-      : 'Tip: If a D2L final is available, switch that subject to “Final Grade” to lock in the official score.'
+      ? 'Tip: Missing a term grade? Leave it blank and enter an expected grade instead - the predictor will fill the gap.'
+      : 'Tip: If a D2L final is available, switch that subject to "Final Grade" to lock in the official score.'
 
     return (
       <div className="liquid-glass-card liquid-glass-guide-card">
@@ -1250,6 +1414,7 @@ function App() {
 
   const projectedGPA = calculateProjectedGPA()
   const futureSuggestions = getFutureImprovementSuggestions(projectedGPA)
+  const enteredFinalGradeCount = selectedSubjects.filter(subject => finalGrades[subject]).length
 
   const handleTargetDialogOpenChange = (open) => {
     if (open) {
@@ -1382,48 +1547,39 @@ function App() {
                 <Sparkles className="liquid-glass-sparkle" />
               </div>
               <h1 className="liquid-glass-title">GPA Calculator</h1>
-              <p className="liquid-glass-subtitle">Core subjects are included automatically. Choose up to {MAX_ELECTIVES} electives.</p>
-              <p className="liquid-glass-subtitle-small">Choose between term-based calculation or direct final grade entry for each subject</p>
-              <p className="liquid-glass-subtitle-small">Your subject choices and grades are typically saved automatically on this device.</p>
+              <p className="liquid-glass-subtitle">Choose your electives first, then enter grades and see your GPA update instantly.</p>
+              <p className="liquid-glass-subtitle-small">Core subjects are already included for everyone.</p>
               {persistenceWarning ? (
                 <p className="liquid-glass-subtitle-small">Heads up: your browser blocked local saving, so progress may not persist after refresh.</p>
               ) : null}
             </div>
 
-            <div className="liquid-glass-card liquid-glass-main-card">
+            <div className="liquid-glass-card liquid-glass-main-card liquid-glass-elective-card">
               <div className="liquid-glass-card-header">
                 <div className="liquid-glass-card-title">
                   <BookOpen className="liquid-glass-card-icon" />
-                  Choose Your Subjects
+                  Select Your Electives
                 </div>
                 <p className="liquid-glass-card-description">
-                  Select your electives. Core subjects remain selected.
+                  Pick up to {MAX_ELECTIVES}. This is the only subject choice you need to make.
                 </p>
               </div>
               <div className="liquid-glass-card-content">
-                <div className="liquid-glass-subject-section">
-                  <h3 className="liquid-glass-subject-section-title">Core Subjects</h3>
-                  <div className="liquid-glass-subjects-grid">
-                    {CORE_SUBJECTS.map(subject => (
-                      <div key={subject} className="liquid-glass-subject-item is-selected is-core">
-                        <Checkbox
-                          id={subject}
-                          checked
-                          disabled
-                          className="liquid-glass-checkbox"
-                        />
-                        <label htmlFor={subject} className="liquid-glass-subject-label">
-                          <div className="liquid-glass-subject-name">{subject}</div>
-                          <div className="liquid-glass-subject-weight">Weight: {SUBJECTS[subject]}</div>
-                        </label>
-                      </div>
-                    ))}
+                <div className="liquid-glass-elective-hero">
+                  <div>
+                    <div className="liquid-glass-kicker">Step 1 of 2</div>
+                    <h2>Choose the electives you actually take.</h2>
+                    <p>Your five core subjects are added in the background, so this screen stays focused on the choices you control.</p>
+                  </div>
+                  <div className="liquid-glass-elective-meter">
+                    <span>{selectedElectiveCount}/{MAX_ELECTIVES}</span>
+                    <small>electives selected</small>
                   </div>
                 </div>
-                <div className="liquid-glass-subject-section">
-                  <h3 className="liquid-glass-subject-section-title">Elective Subjects (choose up to {MAX_ELECTIVES})</h3>
+                <div className="liquid-glass-subject-section liquid-glass-subject-section-primary">
+                  <h3 className="liquid-glass-subject-section-title">Available Electives</h3>
                   <p className="liquid-glass-subject-section-meta">
-                    Most electives are weighted at {DEFAULT_ELECTIVE_WEIGHT}. Spanish and Japanese are weighted at {LANGUAGE_ELECTIVE_WEIGHT}.
+                    Most electives are weighted at {DEFAULT_ELECTIVE_WEIGHT}; Spanish and Japanese are weighted at {LANGUAGE_ELECTIVE_WEIGHT}.
                   </p>
                   <div className="liquid-glass-subjects-grid">
                     {ELECTIVE_SUBJECTS.map(subject => (
@@ -1450,11 +1606,15 @@ function App() {
               <div className="liquid-glass-card liquid-glass-selected-card">
                 <div className="liquid-glass-card-content">
                   <div className="liquid-glass-selected-subjects">
-                    <span className="liquid-glass-selected-label">Selected subjects:</span>
+                    <span className="liquid-glass-selected-label">
+                      {selectedElectiveCount > 0 ? `${selectedElectiveCount} elective${selectedElectiveCount === 1 ? '' : 's'} selected` : 'No electives selected yet'}
+                    </span>
                     <div className="liquid-glass-badges">
-                      {selectedSubjects.map(subject => (
+                      {selectedElectives.length > 0 ? selectedElectives.map(subject => (
                         <div key={subject} className="liquid-glass-badge">{subject}</div>
-                      ))}
+                      )) : (
+                        <div className="liquid-glass-badge liquid-glass-badge-muted">Core subjects included automatically</div>
+                      )}
                     </div>
                   </div>
                   <button onClick={proceedToGradeEntry} className="liquid-glass-button liquid-glass-primary-button">
@@ -1481,7 +1641,7 @@ function App() {
             <Sparkles className="liquid-glass-sparkle" />
           </div>
           <h1 className="liquid-glass-title">GPA Calculator</h1>
-          <p className="liquid-glass-subtitle-small">Enter your grades using terms or final grades from D2L</p>
+          <p className="liquid-glass-subtitle-small">Enter grades by subject. Results update as you go.</p>
           <div className="liquid-glass-mode-switch">
             <button
               type="button"
@@ -1498,8 +1658,19 @@ function App() {
               Predict Future GPA
             </button>
           </div>
-          <button onClick={resetCalculator} className="liquid-glass-button liquid-glass-secondary-button">
-            Change Subjects
+          <div className="liquid-glass-mode-explainer">
+            {calculationMode === 'current' ? (
+              <>
+                <strong>Current GPA</strong> uses grades you already have. It answers: "Where am I sitting right now?"
+              </>
+            ) : (
+              <>
+                <strong>Future GPA</strong> adds your expected grades for unfinished terms. It answers: "What happens if I keep going like this?"
+              </>
+            )}
+          </div>
+          <button onClick={() => setCurrentStep('selection')} className="liquid-glass-button liquid-glass-secondary-button">
+            Edit Subjects
           </button>
         </div>
 
@@ -1516,25 +1687,41 @@ function App() {
                 <p className="liquid-glass-card-description">
                   Choose between term-based calculation or direct final grade entry for each subject
                 </p>
+                <div className="liquid-glass-grade-context">
+                  <div className="liquid-glass-term-selector-label-group">
+                    <span className="liquid-glass-term-selector-label">Grade period</span>
+                    <span className="liquid-glass-term-selector-description">
+                      {termSelectionMode === 'manual'
+                        ? `Manually set. Auto-detected term is ${detectedTerm}.`
+                        : `Auto-detected from ${detectedTermInfo.source}.`}
+                    </span>
+                  </div>
+                  <div className="liquid-glass-term-controls">
+                    <Select value={currentTerm} onValueChange={handleCurrentTermChange}>
+                      <SelectTrigger className="liquid-glass-select liquid-glass-term-select">
+                        <SelectValue placeholder="Select term" />
+                      </SelectTrigger>
+                      <SelectContent className="liquid-glass-select-content">
+                        {TERMS.map(term => (
+                          <SelectItem key={term} value={term} className="liquid-glass-select-item">
+                            {term}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {termSelectionMode === 'manual' ? (
+                      <button
+                        type="button"
+                        onClick={handleUseDetectedTerm}
+                        className="liquid-glass-auto-term-button"
+                      >
+                        Use auto
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
               </div>
               <div className="liquid-glass-card-content">
-                <div className="liquid-glass-term-selector">
-                  <div className="liquid-glass-term-selector-label-group">
-                    <span className="liquid-glass-term-selector-label">Current Term</span>
-                  </div>
-                  <Select value={currentTerm} onValueChange={setCurrentTerm}>
-                    <SelectTrigger className="liquid-glass-select liquid-glass-term-select">
-                      <SelectValue placeholder="Select term" />
-                    </SelectTrigger>
-                    <SelectContent className="liquid-glass-select-content">
-                      {TERMS.map(term => (
-                        <SelectItem key={term} value={term} className="liquid-glass-select-item">
-                          {term}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
 
                 {/* Global Mode Toggle */}
                 {selectedSubjects.length > 0 && (
@@ -1611,19 +1798,28 @@ function App() {
                         {gpa !== null && gpa > 0 ? gpa.toFixed(2) : '--'}
                       </div>
                       <div className="liquid-glass-gpa-max">out of 15.00</div>
+                      <div className="liquid-glass-gpa-note">
+                        {enteredFinalGradeCount} of {selectedSubjects.length} subjects counted
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {(gpa && gpa > 0 && Object.keys(finalGrades).length > 0) ? (
-                  <div className="liquid-glass-card">
+                {(gpa && gpa > 0 && enteredFinalGradeCount > 0) ? (
+                  <div className="liquid-glass-card liquid-glass-save-card">
                     <div className="liquid-glass-card-content">
+                      <div>
+                        <div className="liquid-glass-save-card-title">Save this GPA snapshot</div>
+                        <p className="liquid-glass-save-card-copy">
+                          Sends one row to the Google Doc comparison table for {studentYearLevel}, {currentTerm}.
+                        </p>
+                      </div>
                       <button
                         onClick={() => setShowSaveDialog(true)}
                         className="liquid-glass-button liquid-glass-save-button"
                       >
                         <Save className="liquid-glass-button-icon-left" />
-                        <span>Save to Google Doc</span>
+                        <span>Save Row</span>
                         <FileText className="liquid-glass-button-icon" />
                       </button>
                     </div>
@@ -1663,7 +1859,7 @@ function App() {
                                     className="liquid-glass-remove-target-button"
                                     title="Remove this target"
                                   >
-                                    ×
+                                    Remove
                                   </button>
                                 )}
                               </div>
@@ -1685,13 +1881,13 @@ function App() {
 
                             {requirements.possible && !hasUnenteredGrades && gpa && gpa < targetGPA && improvements.possible && (
                               <div className="liquid-glass-requirement-details">
-                                <p className="liquid-glass-requirement-label">💡 Suggested improvements to reach target:</p>
+                                <p className="liquid-glass-requirement-label">Suggested improvements to reach target:</p>
                                 <div className="liquid-glass-requirement-grades">
                                   {improvements.suggestions.map((suggestion, idx) => (
                                     <div key={idx} className="liquid-glass-requirement-grade">
                                       <span className="liquid-glass-requirement-subject">{suggestion.subject}:</span>
                                       <div className="liquid-glass-improvement-badge">
-                                        {suggestion.from} → {suggestion.to} (+{suggestion.impact} GPA)
+                                        {`${suggestion.from} -> ${suggestion.to} (+${suggestion.impact} GPA)`}
                                       </div>
                                     </div>
                                   ))}
@@ -1701,7 +1897,7 @@ function App() {
 
                             {requirements.possible && !hasUnenteredGrades && (
                               <p className="liquid-glass-requirement-message liquid-glass-success-message">
-                                {gpa >= targetGPA ? 'Already achieved! 🎉' : 'All grades entered'}
+                                {gpa >= targetGPA ? 'Already achieved' : 'All grades entered'}
                               </p>
                             )}
 
@@ -1732,6 +1928,9 @@ function App() {
                         {projectedGPA && projectedGPA > 0 ? projectedGPA.toFixed(2) : '--'}
                       </div>
                       <div className="liquid-glass-gpa-max">based on your expected grades</div>
+                      <div className="liquid-glass-gpa-note">
+                        {enteredFinalGradeCount} of {selectedSubjects.length} subjects locked in
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1743,7 +1942,7 @@ function App() {
                       Where to Improve
                     </div>
                     <p className="liquid-glass-card-description">
-                      Small tweaks to your expectations that boost GPA the most
+                      Biggest GPA gains from your expected grades
                     </p>
                   </div>
                   <div className="liquid-glass-card-content">
@@ -1756,7 +1955,7 @@ function App() {
                               <span className="liquid-glass-future-term">{suggestion.term}</span>
                             </div>
                             <div className="liquid-glass-future-suggestion-body">
-                              <span className="liquid-glass-future-grade">{suggestion.from} → {suggestion.to}</span>
+                              <span className="liquid-glass-future-grade">{`${suggestion.from} -> ${suggestion.to}`}</span>
                               <span className="liquid-glass-future-impact">+{suggestion.impact} GPA</span>
                             </div>
                           </div>
@@ -1789,15 +1988,19 @@ function App() {
                         const onTrack = hasProjection && projectedGPA >= targetGPA
                         const needsMoreData = hasPendingFutureTerms && !hasAnyExpectedFutureGrades
                         const incompleteData = hasPendingFutureTerms && hasAnyExpectedFutureGrades && !hasCompleteExpectedFutureGrades
-                        const badgeClass = needsMoreData || !hasProjection
+                        const badgeClass = !hasProjection
                           ? 'liquid-glass-badge-warning'
                           : onTrack
                           ? 'liquid-glass-badge-success'
+                          : needsMoreData || incompleteData
+                          ? 'liquid-glass-badge-warning'
                           : 'liquid-glass-badge-error'
-                        const badgeLabel = needsMoreData || !hasProjection
+                        const badgeLabel = !hasProjection
                           ? 'Need Data'
                           : onTrack
                           ? 'On Track'
+                          : needsMoreData || incompleteData
+                          ? 'Need Data'
                           : 'Needs Adjustment'
                         const shortfall = hasProjection && projectedGPA < targetGPA
                           ? targetGPA - projectedGPA
@@ -1855,9 +2058,9 @@ function App() {
                                 <div className="liquid-glass-requirement-grades">
                                   {futureSuggestions.suggestions.map((suggestion, idx) => (
                                     <div key={`${suggestion.subject}-${suggestion.term}-${idx}`} className="liquid-glass-requirement-grade">
-                                      <span className="liquid-glass-requirement-subject">{suggestion.subject} • {suggestion.term}</span>
+                                      <span className="liquid-glass-requirement-subject">{suggestion.subject} - {suggestion.term}</span>
                                       <div className="liquid-glass-improvement-badge">
-                                        {suggestion.from} → {suggestion.to} (+{suggestion.impact} GPA)
+                                        {`${suggestion.from} -> ${suggestion.to} (+${suggestion.impact} GPA)`}
                                       </div>
                                     </div>
                                   ))}
@@ -1883,12 +2086,15 @@ function App() {
             <DialogHeader>
               <DialogTitle className="liquid-glass-dialog-title">
                 <Save className="liquid-glass-dialog-icon" />
-                Save to Google Doc
+                Save GPA Row
               </DialogTitle>
+              <DialogDescription className="liquid-glass-dialog-description">
+                This sends one comparison row to the Google Doc table.
+              </DialogDescription>
             </DialogHeader>
-            <div className="liquid-glass-dialog-content" style={{ padding: '24px 20px' }}>
-              <div className="liquid-glass-input-group" style={{ marginBottom: '20px' }}>
-                <label className="liquid-glass-input-label" style={{ marginBottom: '8px', display: 'block' }}>Your Name:</label>
+            <div className="liquid-glass-dialog-content">
+              <div className="liquid-glass-input-group">
+                <label className="liquid-glass-input-label">Your Name</label>
                 <Input
                   value={studentName}
                   onChange={(e) => setStudentName(e.target.value)}
@@ -1896,13 +2102,33 @@ function App() {
                   className="liquid-glass-input"
                 />
               </div>
-              <div className="liquid-glass-gpa-summary" style={{ padding: '16px', backgroundColor: 'rgba(139, 92, 246, 0.1)', borderRadius: '12px' }}>
-                <p className="liquid-glass-summary-text" style={{ fontSize: '18px', textAlign: 'center', margin: 0 }}>
-                  GPA: <span className="liquid-glass-gpa-highlight">{gpa?.toFixed(2)}</span>
+              <div className="liquid-glass-input-group">
+                <label className="liquid-glass-input-label">Year Level</label>
+                <Select value={studentYearLevel} onValueChange={setStudentYearLevel}>
+                  <SelectTrigger className="liquid-glass-select">
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent className="liquid-glass-select-content">
+                    {['Year 7', 'Year 8', 'Year 9', 'Year 10', 'Year 11', 'Year 12'].map(year => (
+                      <SelectItem key={year} value={year} className="liquid-glass-select-item">
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="liquid-glass-gpa-summary">
+                <p className="liquid-glass-summary-text">
+                  <span>{studentYearLevel}</span>
+                  <span>{currentTerm}</span>
+                  <strong>{gpa?.toFixed(2) || '--'} GPA</strong>
+                </p>
+                <p className="liquid-glass-summary-subtext">
+                  {enteredFinalGradeCount} of {selectedSubjects.length} subjects counted in this saved row.
                 </p>
               </div>
             </div>
-            <DialogFooter className="liquid-glass-dialog-footer" style={{ padding: '16px 20px', gap: '12px' }}>
+            <DialogFooter className="liquid-glass-dialog-footer">
               <Button
                 onClick={handleSaveDialogClose}
                 variant="outline"
@@ -1911,7 +2137,7 @@ function App() {
                 Cancel
               </Button>
               <Button
-                onClick={saveToGoogleDoc}
+                onClick={saveSnapshotToGoogleDoc}
                 disabled={isSaving || !studentName.trim()}
                 className="liquid-glass-dialog-button liquid-glass-dialog-save"
               >

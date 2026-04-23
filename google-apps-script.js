@@ -73,103 +73,69 @@ function doPost(e) {
     // Open the Google Doc
     const doc = DocumentApp.openById(GOOGLE_DOC_ID);
     const body = doc.getBody();
-    
-    // Get the current term from the data
+
+    const yearLevel = data.yearLevel || 'Year 8';
     const currentTerm = data.currentTerm || 'Unknown Term';
-    
-    // Look for existing term section
     let table = null;
-    const paragraphs = body.getParagraphs();
-    let termHeadingIndex = -1;
-    
-    // Search for the term heading
-    for (let i = 0; i < paragraphs.length; i++) {
-      const text = paragraphs[i].getText();
-      if (text === currentTerm) {
-        termHeadingIndex = i;
-        break;
-      }
+
+    if (body.getNumChildren() === 0 || body.getText().trim() === '') {
+      body.appendParagraph('GPA Records').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+      body.appendParagraph('Use this table to compare saved GPA snapshots by year level and term.');
+      body.appendParagraph('');
     }
-    
-    if (termHeadingIndex === -1) {
-      // Term section doesn't exist, create it
-      // If this is the first term, add main heading
-      if (body.getNumChildren() === 0) {
-        body.appendParagraph('GPA Records').setHeading(DocumentApp.ParagraphHeading.HEADING1);
-        body.appendParagraph(''); // Spacing
-      }
-      
-      // Add term heading
-      const termHeading = body.appendParagraph(currentTerm);
-      termHeading.setHeading(DocumentApp.ParagraphHeading.HEADING2);
-      termHeading.setForegroundColor('#8B5CF6');
-      body.appendParagraph(''); // Spacing
-      
-      // Create table with headers
-      table = body.appendTable();
-      const headerRow = table.appendTableRow();
-      headerRow.appendTableCell('Date');
-      headerRow.appendTableCell('Student Name');
-      headerRow.appendTableCell('Current GPA');
-      headerRow.appendTableCell('Subjects');
-      
-      // Style header row
-      for (let i = 0; i < 4; i++) {
-        const cell = headerRow.getCell(i);
-        cell.setBackgroundColor('#8B5CF6');
-        cell.getChild(0).asText().setForegroundColor('#000000').setBold(true);
-        cell.setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(8).setPaddingRight(8);
-      }
-      
-      body.appendParagraph(''); // Spacing after table
-    } else {
-      // Find the table after the term heading
-      const allTables = body.getTables();
-      for (let i = 0; i < allTables.length; i++) {
-        const tableIndex = body.getChildIndex(allTables[i]);
-        if (tableIndex > termHeadingIndex) {
-          table = allTables[i];
+
+    const tables = body.getTables();
+    for (let i = 0; i < tables.length; i++) {
+      const candidate = tables[i];
+      if (candidate.getNumRows() > 0 && candidate.getRow(0).getNumCells() >= 7) {
+        const firstCellText = candidate.getRow(0).getCell(0).getText();
+        if (firstCellText === 'Saved At') {
+          table = candidate;
           break;
         }
       }
-      
-      // If no table found after heading, create one
-      if (!table) {
-        const termParagraph = paragraphs[termHeadingIndex];
-        const termIndex = body.getChildIndex(termParagraph);
-        
-        table = body.insertTable(termIndex + 1);
-        const headerRow = table.appendTableRow();
-        headerRow.appendTableCell('Date');
-        headerRow.appendTableCell('Student Name');
-        headerRow.appendTableCell('Current GPA');
-        headerRow.appendTableCell('Subjects');
-        
-        // Style header row
-        for (let i = 0; i < 4; i++) {
-          const cell = headerRow.getCell(i);
-          cell.setBackgroundColor('#8B5CF6');
-          cell.getChild(0).asText().setForegroundColor('#000000').setBold(true);
-          cell.setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(8).setPaddingRight(8);
-        }
+    }
+
+    if (!table) {
+      body.appendParagraph('Comparison Table').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+      table = body.appendTable();
+      const headerRow = table.appendTableRow();
+      headerRow.appendTableCell('Saved At');
+      headerRow.appendTableCell('Year Level');
+      headerRow.appendTableCell('Term');
+      headerRow.appendTableCell('Student Name');
+      headerRow.appendTableCell('GPA');
+      headerRow.appendTableCell('Completed');
+      headerRow.appendTableCell('Subjects');
+
+      for (let i = 0; i < headerRow.getNumCells(); i++) {
+        const cell = headerRow.getCell(i);
+        cell.setBackgroundColor('#2563EB');
+        cell.getChild(0).asText().setForegroundColor('#FFFFFF').setBold(true);
+        cell.setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(8).setPaddingRight(8);
       }
     }
-    
+
     // Format the data
-    const timestamp = new Date(data.timestamp).toLocaleDateString();
+    const timestamp = new Date(data.timestamp).toLocaleString();
+    const completedSubjects = Number(data.completedSubjects || 0);
+    const totalSubjects = Number(data.totalSubjects || (data.subjects || []).length);
     const subjectsText = data.subjects
       .map(s => `${s.subject}: ${s.finalGrade || 'Incomplete'}`)
       .join('\n');
-    
+
     // Add new row
     const newRow = table.appendTableRow();
     newRow.appendTableCell(timestamp);
+    newRow.appendTableCell(yearLevel);
+    newRow.appendTableCell(currentTerm);
     newRow.appendTableCell(data.studentName);
     newRow.appendTableCell(String(data.gpa || data.currentGpa || 'N/A'));
+    newRow.appendTableCell(`${completedSubjects}/${totalSubjects}`);
     newRow.appendTableCell(subjectsText);
-    
+
     // Style the new row
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < newRow.getNumCells(); i++) {
       const cell = newRow.getCell(i);
       cell.setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(8).setPaddingRight(8);
       if (table.getNumRows() % 2 === 0) {
@@ -181,45 +147,31 @@ function doPost(e) {
     // Save the document
     doc.saveAndClose();
     
-    // Return success response with CORS headers
+    // Return success response. The web app posts with no-cors, so the browser
+    // does not need custom response headers from Apps Script.
     return ContentService.createTextOutput(
       JSON.stringify({
         success: true,
-        message: `Successfully saved ${data.studentName}'s GPA (${data.gpa || data.currentGpa}) to Google Doc!`,
+        message: `Successfully added ${data.studentName}'s ${yearLevel} ${currentTerm} GPA (${data.gpa || data.currentGpa}) to the comparison table!`,
         docUrl: `https://docs.google.com/document/d/${GOOGLE_DOC_ID}/edit`
       })
     )
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeaders({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    });
+    .setMimeType(ContentService.MimeType.JSON);
     
   } catch (error) {
-    // Return error response with CORS headers
+    // Return error response. The browser may not be able to read this in
+    // no-cors mode, but direct script testing still gets useful JSON.
     return ContentService.createTextOutput(
       JSON.stringify({
         success: false,
         message: `Error: ${error.message}`
       })
     )
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeaders({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    });
+    .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
 // Handle preflight OPTIONS requests for CORS
 function doOptions(e) {
-  return ContentService.createTextOutput('')
-    .setHeaders({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Max-Age': '86400'
-    });
+  return ContentService.createTextOutput('');
 }
