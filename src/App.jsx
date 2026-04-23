@@ -192,6 +192,8 @@ function App() {
   const [studentName, setStudentName] = useState('')
   const [studentYearLevel, setStudentYearLevel] = useState('Year 8')
   const [isSaving, setIsSaving] = useState(false)
+  const [saveStatusMessage, setSaveStatusMessage] = useState('')
+  const [saveErrorMessage, setSaveErrorMessage] = useState('')
   const [saveAttempts, setSaveAttempts] = useState(0)
   const [userDismissedDialog, setUserDismissedDialog] = useState(false)
   const [customTargetGPA, setCustomTargetGPA] = useState('')
@@ -204,6 +206,7 @@ function App() {
   const [hasHydratedState, setHasHydratedState] = useState(false)
   const [persistenceWarning, setPersistenceWarning] = useState(false)
   const [termSelectionMode, setTermSelectionMode] = useState('auto')
+  const [showElectiveChooser, setShowElectiveChooser] = useState(true)
   const selectedElectiveCount = selectedSubjects.filter(subject => !CORE_SUBJECTS.includes(subject)).length
   const selectedElectives = selectedSubjects.filter(subject => !CORE_SUBJECTS.includes(subject))
   const detectedTermInfo = getDetectedTermInfo()
@@ -223,6 +226,9 @@ function App() {
         setSelectedSubjects(updatedSubjects)
         setGradeEntryModes(prev => ({ ...prev, [subject]: 'terms' }))
         setActiveSubject(subject)
+        if (updatedSubjects.filter(s => !CORE_SUBJECTS.includes(s)).length >= MAX_ELECTIVES) {
+          setShowElectiveChooser(false)
+        }
       } else {
         alert(`You can select a maximum of ${MAX_ELECTIVES} elective subjects.`)
       }
@@ -250,6 +256,9 @@ function App() {
       if (activeSubject === subject) {
         setActiveSubject(updatedSubjects[0] || null)
       }
+      if (updatedSubjects.every(s => CORE_SUBJECTS.includes(s))) {
+        setShowElectiveChooser(true)
+      }
     }
   }
 
@@ -261,20 +270,6 @@ function App() {
       ...prev,
       [subject]: newMode
     }))
-
-    // Clear existing grades when switching modes
-    if (newMode === 'final') {
-      const newTermGrades = { ...termGrades }
-      delete newTermGrades[subject]
-      setTermGrades(newTermGrades)
-      const newTermFinalGrades = { ...termFinalGrades }
-      delete newTermFinalGrades[subject]
-      setTermFinalGrades(newTermFinalGrades)
-    } else {
-      const newDirectFinalGrades = { ...directFinalGrades }
-      delete newDirectFinalGrades[subject]
-      setDirectFinalGrades(newDirectFinalGrades)
-    }
   }
 
   const handleGlobalModeToggle = () => {
@@ -292,15 +287,6 @@ function App() {
     })
     
     setGradeEntryModes(newGradeEntryModes)
-    
-    // Clear all grades when switching modes globally
-    if (newMode === 'final') {
-      setTermGrades({})
-      setTermFinalGrades({})
-    } else {
-      setDirectFinalGrades({})
-      setTermFinalGrades({})
-    }
   }
 
   const getGlobalModeStatus = () => {
@@ -786,23 +772,23 @@ function App() {
 
   const saveSnapshotToGoogleDoc = async () => {
     if (!studentName.trim()) {
-      alert('Please enter your name before saving!')
+      setSaveErrorMessage('Enter your name before saving.')
       return
     }
 
     if (isInappropriateName(studentName)) {
-      alert('The name you entered appears to be inappropriate or invalid. Please use your real name.')
+      setSaveErrorMessage('That name looks invalid. Please use your real name.')
       return
     }
 
     if (!GOOGLE_APPS_SCRIPT_URL) {
-      alert('Google Apps Script URL is not configured. Please set VITE_GOOGLE_APPS_SCRIPT_URL in your environment.')
+      setSaveErrorMessage('Google Docs is not connected yet. Add the Apps Script web app URL first.')
       return
     }
 
     setIsSaving(true)
-    const docUrl = `https://docs.google.com/document/d/${GOOGLE_DOC_ID}/edit`
-    const docWindow = window.open(docUrl, '_blank', 'noopener,noreferrer')
+    setSaveStatusMessage('')
+    setSaveErrorMessage('')
 
     try {
       const subjectSummaries = selectedSubjects.map(subject => ({
@@ -831,7 +817,7 @@ function App() {
         googleDocId: GOOGLE_DOC_ID
       }
 
-      await fetch(GOOGLE_APPS_SCRIPT_URL, {
+      const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
         headers: {
@@ -842,15 +828,12 @@ function App() {
         })
       })
 
-      alert(`Sent ${studentName}'s ${studentYearLevel} ${currentTerm} GPA (${gpa?.toFixed(2)}) to the Google Doc table. If it does not appear, redeploy the Apps Script with Anyone access.`)
-
-      if (!docWindow || docWindow.closed || typeof docWindow.closed === 'undefined') {
-        const openNow = confirm('The Google Doc popup was blocked. Click OK to open it now.')
-        if (openNow) {
-          window.open(docUrl, '_blank', 'noopener,noreferrer')
-        }
-      }
-
+      const cannotVerifyAppsScriptPost = response.type === 'opaque'
+      setSaveStatusMessage(
+        cannotVerifyAppsScriptPost
+          ? `Save request sent for ${studentName.trim()}. Check the Google Doc to confirm it was added.`
+          : `Saved ${studentName.trim()}'s ${studentYearLevel} ${currentTerm} GPA to Google Docs.`
+      )
       setShowSaveDialog(false)
       setStudentName('')
       setSaveAttempts(0)
@@ -859,24 +842,28 @@ function App() {
       const errorMessage = error.message || 'Unknown error occurred'
 
       if (errorMessage.includes('inappropriate') || errorMessage.includes('invalid')) {
-        alert(errorMessage)
+        setSaveErrorMessage(errorMessage)
       } else {
-        alert(`Failed to save to Google Doc.\n\n${errorMessage}`)
-      }
-
-      if (docWindow && !docWindow.closed) {
-        docWindow.close()
+        setSaveErrorMessage(`Could not reach Google Docs. ${errorMessage}`)
       }
     } finally {
       setIsSaving(false)
     }
   }
 
-  const handleSaveDialogClose = () => {
+  const handleSaveDialogOpenChange = (open) => {
+    if (open) {
+      setSaveErrorMessage('')
+      setShowSaveDialog(true)
+      return
+    }
+
     setSaveAttempts(prev => prev + 1)
     setShowSaveDialog(false)
     setUserDismissedDialog(true)
   }
+
+  const handleSaveDialogClose = () => handleSaveDialogOpenChange(false)
 
   const getPassiveAggressiveMessage = () => {
     switch (saveAttempts) {
@@ -907,6 +894,11 @@ function App() {
 
       const safeCurrentStep = parsed?.currentStep === 'gradeEntry' ? 'gradeEntry' : 'selection'
       const safeCalculationMode = parsed?.calculationMode === 'future' ? 'future' : 'current'
+      const safeShowElectiveChooser = safeSelectedSubjects.some(subject => !CORE_SUBJECTS.includes(subject))
+        ? false
+        : typeof parsed?.showElectiveChooser === 'boolean'
+        ? parsed.showElectiveChooser
+        : true
 
       const persistedGradeModes = typeof parsed?.gradeEntryModes === 'object' && parsed.gradeEntryModes !== null
         ? parsed.gradeEntryModes
@@ -928,6 +920,7 @@ function App() {
       setCurrentTerm(safeCurrentTerm)
       setCalculationMode(safeCalculationMode)
       setGradeEntryModes(hydratedGradeModes)
+      setShowElectiveChooser(safeShowElectiveChooser)
 
       if (typeof parsed?.termGrades === 'object' && parsed.termGrades !== null) {
         setTermGrades(parsed.termGrades)
@@ -998,7 +991,8 @@ function App() {
       targetGPAs,
       activeSubject,
       termSelectionMode,
-      studentYearLevel
+      studentYearLevel,
+      showElectiveChooser
     }
 
     try {
@@ -1021,7 +1015,8 @@ function App() {
     targetGPAs,
     activeSubject,
     termSelectionMode,
-    studentYearLevel
+    studentYearLevel,
+    showElectiveChooser
   ])
 
   // Update final grades when term grades or direct final grades change
@@ -1091,6 +1086,7 @@ function App() {
     setSelectedSubjects([...CORE_SUBJECTS])
     setCurrentTerm(getDetectedTerm())
     setTermSelectionMode('auto')
+    setShowElectiveChooser(true)
     setGradeEntryModes(createDefaultGradeModes())
     setTermGrades({})
     setDirectFinalGrades({})
@@ -1565,44 +1561,74 @@ function App() {
                 </p>
               </div>
               <div className="liquid-glass-card-content">
-                <div className="liquid-glass-elective-hero">
-                  <div>
-                    <div className="liquid-glass-kicker">Step 1 of 2</div>
-                    <h2>Choose the electives you actually take.</h2>
-                    <p>Your five core subjects are added in the background, so this screen stays focused on the choices you control.</p>
-                  </div>
-                  <div className="liquid-glass-elective-meter">
-                    <span>{selectedElectiveCount}/{MAX_ELECTIVES}</span>
-                    <small>electives selected</small>
-                  </div>
-                </div>
-                <div className="liquid-glass-subject-section liquid-glass-subject-section-primary">
-                  <h3 className="liquid-glass-subject-section-title">Available Electives</h3>
-                  <p className="liquid-glass-subject-section-meta">
-                    Most electives are weighted at {DEFAULT_ELECTIVE_WEIGHT}; Spanish and Japanese are weighted at {LANGUAGE_ELECTIVE_WEIGHT}.
-                  </p>
-                  <div className="liquid-glass-subjects-grid">
-                    {ELECTIVE_SUBJECTS.map(subject => (
-                      <div key={subject} className={`liquid-glass-subject-item${selectedSubjects.includes(subject) ? ' is-selected' : ''}`}>
-                        <Checkbox
-                          id={subject}
-                          checked={selectedSubjects.includes(subject)}
-                          onCheckedChange={(checked) => handleSubjectToggle(subject, checked)}
-                          disabled={!selectedSubjects.includes(subject) && selectedElectiveCount >= MAX_ELECTIVES}
-                          className="liquid-glass-checkbox"
-                        />
-                        <label htmlFor={subject} className="liquid-glass-subject-label">
-                          <div className="liquid-glass-subject-name">{subject}</div>
-                          <div className="liquid-glass-subject-weight">Weight: {SUBJECTS[subject]}</div>
-                        </label>
+                {showElectiveChooser ? (
+                  <>
+                    <div className="liquid-glass-elective-hero">
+                      <div>
+                        <div className="liquid-glass-kicker">Step 1 of 2</div>
+                        <h2>Choose the electives you actually take.</h2>
+                        <p>Your five core subjects are added in the background, so this screen stays focused on the choices you control.</p>
                       </div>
-                    ))}
+                      <div className="liquid-glass-elective-meter">
+                        <span>{selectedElectiveCount}/{MAX_ELECTIVES}</span>
+                        <small>electives selected</small>
+                      </div>
+                    </div>
+                    <div className="liquid-glass-subject-section liquid-glass-subject-section-primary">
+                      <h3 className="liquid-glass-subject-section-title">Available Electives</h3>
+                      <p className="liquid-glass-subject-section-meta">
+                        Most electives are weighted at {DEFAULT_ELECTIVE_WEIGHT}; Spanish and Japanese are weighted at {LANGUAGE_ELECTIVE_WEIGHT}.
+                      </p>
+                      <div className="liquid-glass-subjects-grid">
+                        {ELECTIVE_SUBJECTS.map(subject => (
+                          <div key={subject} className={`liquid-glass-subject-item${selectedSubjects.includes(subject) ? ' is-selected' : ''}`}>
+                            <Checkbox
+                              id={subject}
+                              checked={selectedSubjects.includes(subject)}
+                              onCheckedChange={(checked) => handleSubjectToggle(subject, checked)}
+                              disabled={!selectedSubjects.includes(subject) && selectedElectiveCount >= MAX_ELECTIVES}
+                              className="liquid-glass-checkbox"
+                            />
+                            <label htmlFor={subject} className="liquid-glass-subject-label">
+                              <div className="liquid-glass-subject-name">{subject}</div>
+                              <div className="liquid-glass-subject-weight">Weight: {SUBJECTS[subject]}</div>
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="liquid-glass-elective-summary">
+                    <div className="liquid-glass-elective-summary-header">
+                      <div>
+                        <div className="liquid-glass-kicker">Electives selected</div>
+                        <h2>{selectedElectiveCount}/{MAX_ELECTIVES} chosen</h2>
+                        <p>Core subjects stay included automatically. Use the button to change electives whenever you need to.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowElectiveChooser(true)}
+                        className="liquid-glass-auto-term-button"
+                      >
+                        Choose electives
+                      </button>
+                    </div>
+                    <div className="liquid-glass-badges">
+                      {selectedElectives.map(subject => (
+                        <div key={subject} className="liquid-glass-badge">{subject}</div>
+                      ))}
+                    </div>
+                    <button onClick={proceedToGradeEntry} className="liquid-glass-button liquid-glass-primary-button">
+                      <span>Continue to Grade Entry</span>
+                      <Calculator className="liquid-glass-button-icon" />
+                    </button>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
-            {selectedSubjects.length > 0 && (
+            {showElectiveChooser && selectedSubjects.length > 0 && (
               <div className="liquid-glass-card liquid-glass-selected-card">
                 <div className="liquid-glass-card-content">
                   <div className="liquid-glass-selected-subjects">
@@ -1675,6 +1701,59 @@ function App() {
         </div>
 
         <div className="liquid-glass-grade-layout">
+          <aside className="liquid-glass-elective-rail">
+            <div className="liquid-glass-card liquid-glass-rail-card">
+              <div className="liquid-glass-card-header">
+                <div className="liquid-glass-card-title">
+                  <BookOpen className="liquid-glass-card-icon" />
+                  Subjects
+                </div>
+                <p className="liquid-glass-card-description">
+                  {selectedElectiveCount}/{MAX_ELECTIVES} electives selected
+                </p>
+              </div>
+              <div className="liquid-glass-card-content">
+                <div className="liquid-glass-rail-section">
+                  <div className="liquid-glass-rail-section-title">Electives</div>
+                  <div className="liquid-glass-badges">
+                    {selectedElectives.length > 0 ? selectedElectives.map(subject => (
+                      <div key={subject} className="liquid-glass-badge">{subject}</div>
+                    )) : (
+                      <div className="liquid-glass-badge liquid-glass-badge-muted">Core only</div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowElectiveChooser(true)
+                      setCurrentStep('selection')
+                    }}
+                    className="liquid-glass-button liquid-glass-secondary-button liquid-glass-rail-button"
+                  >
+                    Choose electives
+                  </button>
+                </div>
+
+                <div className="liquid-glass-rail-section">
+                  <div className="liquid-glass-rail-section-title">Grade entry</div>
+                  <div className="liquid-glass-subject-nav">
+                    {selectedSubjects.map(subject => (
+                      <button
+                        type="button"
+                        key={subject}
+                        onClick={() => setActiveSubject(subject)}
+                        className={`liquid-glass-subject-nav-button${activeSubject === subject ? ' is-active' : ''}`}
+                      >
+                        <span className="liquid-glass-subject-nav-name">{subject}</span>
+                        <span className="liquid-glass-subject-nav-weight">Weight {SUBJECTS[subject]}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
+
           {/* Grade Entry Section */}
           <div className="liquid-glass-grade-entry">
             {renderModeGuide()}
@@ -1755,19 +1834,6 @@ function App() {
                 
                 {selectedSubjects.length > 0 ? (
                   <div className="liquid-glass-grade-entry-columns">
-                    <div className="liquid-glass-subject-nav">
-                      {selectedSubjects.map(subject => (
-                        <button
-                          type="button"
-                          key={subject}
-                          onClick={() => setActiveSubject(subject)}
-                          className={`liquid-glass-subject-nav-button${activeSubject === subject ? ' is-active' : ''}`}
-                        >
-                          <span className="liquid-glass-subject-nav-name">{subject}</span>
-                          <span className="liquid-glass-subject-nav-weight">Weight {SUBJECTS[subject]}</span>
-                        </button>
-                      ))}
-                    </div>
                     <div className="liquid-glass-subject-panel">
                       {renderSubjectPanel()}
                     </div>
@@ -1811,15 +1877,21 @@ function App() {
                       <div>
                         <div className="liquid-glass-save-card-title">Save this GPA snapshot</div>
                         <p className="liquid-glass-save-card-copy">
-                          Sends one row to the Google Doc comparison table for {studentYearLevel}, {currentTerm}.
+                          Saves this result to Google Docs with your name, year, term, GPA, and subjects.
                         </p>
+                        {saveStatusMessage ? (
+                          <p className="liquid-glass-save-status">{saveStatusMessage}</p>
+                        ) : null}
                       </div>
                       <button
-                        onClick={() => setShowSaveDialog(true)}
+                        onClick={() => {
+                          setSaveErrorMessage('')
+                          setShowSaveDialog(true)
+                        }}
                         className="liquid-glass-button liquid-glass-save-button"
                       >
                         <Save className="liquid-glass-button-icon-left" />
-                        <span>Save Row</span>
+                        <span>Save GPA</span>
                         <FileText className="liquid-glass-button-icon" />
                       </button>
                     </div>
@@ -2081,15 +2153,15 @@ function App() {
         {targetGPADialog}
 
         {/* Save to Google Doc Dialog */}
-        <Dialog open={showSaveDialog} onOpenChange={handleSaveDialogClose}>
+        <Dialog open={showSaveDialog} onOpenChange={handleSaveDialogOpenChange}>
           <DialogContent className="liquid-glass-dialog">
             <DialogHeader>
               <DialogTitle className="liquid-glass-dialog-title">
                 <Save className="liquid-glass-dialog-icon" />
-                Save GPA Row
+                Save GPA
               </DialogTitle>
               <DialogDescription className="liquid-glass-dialog-description">
-                This sends one comparison row to the Google Doc table.
+                Save this GPA snapshot to Google Docs with your name and year level.
               </DialogDescription>
             </DialogHeader>
             <div className="liquid-glass-dialog-content">
@@ -2124,9 +2196,14 @@ function App() {
                   <strong>{gpa?.toFixed(2) || '--'} GPA</strong>
                 </p>
                 <p className="liquid-glass-summary-subtext">
-                  {enteredFinalGradeCount} of {selectedSubjects.length} subjects counted in this saved row.
+                  {enteredFinalGradeCount} of {selectedSubjects.length} subjects counted in this save.
                 </p>
               </div>
+              {saveErrorMessage ? (
+                <div className="liquid-glass-save-error" role="alert">
+                  {saveErrorMessage}
+                </div>
+              ) : null}
             </div>
             <DialogFooter className="liquid-glass-dialog-footer">
               <Button
@@ -2149,7 +2226,7 @@ function App() {
                 ) : (
                   <>
                     <Save className="liquid-glass-button-icon-left" />
-                    Save to Doc
+                    Save GPA
                   </>
                 )}
               </Button>

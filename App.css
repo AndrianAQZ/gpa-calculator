@@ -1,5 +1,5 @@
 :root {
-  --bg: #f5f7fb;
+  --bg: #f3f6fb;
   --surface: #ffffff;
   --surface-soft: #f8fafc;
   --surface-blue: #eef6ff;
@@ -18,8 +18,8 @@
   --danger: #bc2b2b;
   --danger-soft: #ffe1e1;
   --violet: #5b5bd6;
-  --shadow: 0 14px 34px rgba(26, 40, 67, 0.09);
-  --shadow-soft: 0 8px 20px rgba(26, 40, 67, 0.06);
+  --shadow: 0 18px 44px rgba(26, 40, 67, 0.11);
+  --shadow-soft: 0 8px 22px rgba(26, 40, 67, 0.07);
   --radius: 8px;
 }
 
@@ -35,7 +35,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Aptos", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -61,8 +61,8 @@ button {
   inset: 0;
   z-index: -1;
   background:
-    linear-gradient(180deg, #eaf2ff 0, #f5f7fb 360px, #f5f7fb 100%),
-    linear-gradient(90deg, rgba(37, 99, 235, 0.08), rgba(22, 135, 83, 0.05));
+    linear-gradient(180deg, #eef4fb 0, #f7f9fc 260px, #f3f6fb 100%),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.06), rgba(22, 135, 83, 0.04));
 }
 
 .liquid-glass-container {
@@ -73,19 +73,57 @@ button {
   z-index: 1;
 }
 
+.liquid-glass-container:not(.liquid-glass-grade-container) {
+  width: min(1260px, calc(100% - 32px));
+  padding-top: 18px;
+}
+
+.liquid-glass-container:not(.liquid-glass-grade-container) > .liquid-glass-header {
+  grid-template-columns: auto minmax(0, 1fr);
+  justify-items: start;
+  align-items: center;
+  gap: 4px 14px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+}
+
+.liquid-glass-container:not(.liquid-glass-grade-container) > .liquid-glass-header .liquid-glass-icon-wrapper {
+  grid-row: 1 / span 3;
+  width: 44px;
+  height: 44px;
+}
+
+.liquid-glass-container:not(.liquid-glass-grade-container) > .liquid-glass-header .liquid-glass-title {
+  margin: 0;
+  font-size: 30px;
+}
+
+.liquid-glass-container:not(.liquid-glass-grade-container) > .liquid-glass-header .liquid-glass-subtitle,
+.liquid-glass-container:not(.liquid-glass-grade-container) > .liquid-glass-header .liquid-glass-subtitle-small {
+  margin: 0;
+  max-width: none;
+  font-size: 14px;
+}
+
 .liquid-glass-grade-container {
-  width: min(1440px, calc(100% - 40px));
+  width: min(1500px, calc(100% - 32px));
+  padding-top: 16px;
 }
 
 .liquid-glass-grade-container > .liquid-glass-header {
-  grid-template-columns: auto minmax(0, 1fr) minmax(360px, 520px);
+  grid-template-columns: auto minmax(0, 1fr) minmax(370px, 520px) auto;
   justify-items: start;
   align-items: center;
-  gap: 8px 16px;
-  margin-bottom: 18px;
-  padding: 16px;
+  gap: 8px 14px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
   text-align: left;
-  background: rgba(255, 255, 255, 0.86);
+  background: rgba(255, 255, 255, 0.94);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow-soft);
@@ -93,8 +131,8 @@ button {
 
 .liquid-glass-grade-container > .liquid-glass-header .liquid-glass-icon-wrapper {
   grid-row: 1 / span 2;
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
 }
 
 .liquid-glass-grade-container > .liquid-glass-header .liquid-glass-title {
@@ -115,17 +153,18 @@ button {
 }
 
 .liquid-glass-grade-container > .liquid-glass-header .liquid-glass-secondary-button {
-  grid-column: 3;
-  grid-row: 2;
+  grid-column: 4;
+  grid-row: 1 / span 2;
   justify-self: end;
   min-width: 150px;
 }
 
 .liquid-glass-grade-container > .liquid-glass-header .liquid-glass-mode-explainer {
-  grid-column: 1 / -1;
+  grid-column: 3;
+  grid-row: 2;
   justify-self: stretch;
   width: 100%;
-  margin-top: 6px;
+  margin: 0;
 }
 
 .liquid-glass-header {
@@ -198,6 +237,7 @@ button {
 
 .liquid-glass-elective-card {
   overflow: hidden;
+  max-width: none;
 }
 
 .liquid-glass-card-header {
@@ -273,7 +313,7 @@ button {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 20px;
   align-items: center;
-  padding: 22px;
+  padding: 18px;
   background:
     linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(22, 135, 83, 0.08)),
     var(--surface-blue);
@@ -284,7 +324,7 @@ button {
 .liquid-glass-elective-hero h2 {
   margin: 4px 0 8px;
   color: var(--text);
-  font-size: 28px;
+  font-size: 24px;
   line-height: 1.15;
   font-weight: 850;
 }
@@ -308,8 +348,8 @@ button {
 .liquid-glass-elective-meter {
   display: grid;
   place-items: center;
-  width: 126px;
-  height: 126px;
+  width: 110px;
+  height: 110px;
   background: var(--surface);
   border: 1px solid #bdd5fb;
   border-radius: 50%;
@@ -318,7 +358,7 @@ button {
 
 .liquid-glass-elective-meter span {
   color: var(--primary-strong);
-  font-size: 34px;
+  font-size: 30px;
   line-height: 1;
   font-weight: 900;
 }
@@ -332,12 +372,44 @@ button {
   font-weight: 750;
 }
 
+.liquid-glass-elective-summary {
+  display: grid;
+  gap: 12px;
+  padding: 20px 24px;
+  background: var(--surface-soft);
+  border: 1px dashed #bdd5fb;
+  border-radius: var(--radius);
+}
+
+.liquid-glass-elective-summary-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+}
+
+.liquid-glass-elective-summary-header h2 {
+  margin: 4px 0 8px;
+  color: var(--text);
+  font-size: 26px;
+  line-height: 1.15;
+  font-weight: 850;
+}
+
+.liquid-glass-elective-summary-header p {
+  max-width: 700px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
 .liquid-glass-subject-item {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  min-height: 76px;
-  padding: 15px;
+  min-height: 70px;
+  padding: 13px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -528,6 +600,25 @@ button {
   line-height: 1.45;
 }
 
+.liquid-glass-save-status {
+  margin: 8px 0 0;
+  color: var(--success);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 750;
+}
+
+.liquid-glass-save-error {
+  padding: 12px 14px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid #f7b6b6;
+  border-radius: var(--radius);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 750;
+}
+
 .liquid-glass-button-icon,
 .liquid-glass-button-icon-left {
   width: 18px;
@@ -550,14 +641,14 @@ button {
 .liquid-glass-mode-explainer {
   width: min(620px, 100%);
   margin-top: 2px;
-  padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid var(--line);
+  padding: 8px 10px;
+  background: #f8fafc;
+  border: 1px solid #e5ecf5;
   border-radius: var(--radius);
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.45;
-  box-shadow: 0 4px 14px rgba(26, 40, 67, 0.05);
+  box-shadow: none;
 }
 
 .liquid-glass-mode-explainer strong {
@@ -583,15 +674,52 @@ button {
 
 .liquid-glass-grade-layout {
   display: grid;
-  grid-template-columns: minmax(620px, 1.45fr) minmax(340px, 0.75fr);
-  gap: 20px;
+  grid-template-columns: 260px minmax(520px, 1fr) minmax(330px, 0.48fr);
+  gap: 16px;
   align-items: start;
+}
+
+.liquid-glass-elective-rail {
+  position: sticky;
+  top: 16px;
+  min-width: 0;
+}
+
+.liquid-glass-rail-card .liquid-glass-card-header {
+  padding-bottom: 8px;
+}
+
+.liquid-glass-rail-card .liquid-glass-card-content {
+  display: grid;
+  gap: 16px;
+}
+
+.liquid-glass-rail-section {
+  display: grid;
+  gap: 10px;
+}
+
+.liquid-glass-rail-section + .liquid-glass-rail-section {
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.liquid-glass-rail-section-title {
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.liquid-glass-rail-button {
+  width: 100%;
 }
 
 .liquid-glass-grade-entry,
 .liquid-glass-results {
   display: grid;
-  gap: 16px;
+  gap: 14px;
   min-width: 0;
 }
 
@@ -611,7 +739,7 @@ button {
   align-items: center;
   width: 100%;
   padding: 12px;
-  margin-top: 16px;
+  margin-top: 14px;
   background: var(--surface-soft);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -694,8 +822,8 @@ button {
 .liquid-glass-global-toggle {
   display: grid;
   gap: 8px;
-  padding: 14px;
-  margin-bottom: 16px;
+  padding: 12px;
+  margin-bottom: 14px;
   background: #f7fbff;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -743,22 +871,22 @@ button {
 
 .liquid-glass-grade-entry-columns {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
   align-items: start;
 }
 
 .liquid-glass-subject-nav {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .liquid-glass-subject-nav-button {
   display: grid;
   gap: 5px;
   width: 100%;
-  min-height: 58px;
-  padding: 12px;
+  min-height: 54px;
+  padding: 10px 11px;
   text-align: left;
   background: var(--surface);
   color: var(--text);
@@ -791,7 +919,7 @@ button {
 
 .liquid-glass-subject-panel {
   min-width: 0;
-  min-height: 300px;
+  min-height: 280px;
   padding: 18px;
   background: var(--surface-soft);
   border: 1px solid var(--line);
@@ -856,7 +984,7 @@ button {
 .liquid-glass-terms-grid,
 .liquid-glass-expected-terms {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px;
 }
 
@@ -965,15 +1093,22 @@ button {
 .liquid-glass-requirements,
 .liquid-glass-future-suggestion-list {
   display: grid;
-  gap: 12px;
+  gap: 10px;
+}
+
+.liquid-glass-requirements {
+  max-height: min(52vh, 520px);
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
 }
 
 .liquid-glass-final-grade-item,
 .liquid-glass-requirement-item,
 .liquid-glass-future-suggestion {
   display: grid;
-  gap: 12px;
-  padding: 16px;
+  gap: 10px;
+  padding: 13px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -1054,7 +1189,7 @@ button {
 .liquid-glass-requirement-title {
   margin: 0;
   color: var(--text);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.35;
   font-weight: 800;
 }
@@ -1104,7 +1239,7 @@ button {
 
 .liquid-glass-requirement-details {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .liquid-glass-requirement-label {
@@ -1116,16 +1251,16 @@ button {
 
 .liquid-glass-requirement-grades {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .liquid-glass-requirement-grade {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .liquid-glass-requirement-grade-badge {
@@ -1313,7 +1448,7 @@ button {
   }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1180px) {
   .liquid-glass-grade-container > .liquid-glass-header {
     grid-template-columns: auto minmax(0, 1fr);
   }
@@ -1337,8 +1472,26 @@ button {
     grid-template-columns: 1fr;
   }
 
+  .liquid-glass-elective-rail,
   .liquid-glass-results {
     position: static;
+  }
+
+  .liquid-glass-rail-card .liquid-glass-card-content {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    align-items: start;
+  }
+
+  .liquid-glass-rail-section + .liquid-glass-rail-section {
+    padding-top: 0;
+    padding-left: 14px;
+    border-top: 0;
+    border-left: 1px solid var(--line);
+  }
+
+  .liquid-glass-subject-nav {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   }
 }
 
@@ -1386,6 +1539,17 @@ button {
     scroll-snap-align: start;
   }
 
+  .liquid-glass-rail-card .liquid-glass-card-content {
+    grid-template-columns: 1fr;
+  }
+
+  .liquid-glass-rail-section + .liquid-glass-rail-section {
+    padding-top: 14px;
+    padding-left: 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
   .liquid-glass-grade-context {
     grid-template-columns: 1fr;
   }
@@ -1415,6 +1579,32 @@ button {
   .liquid-glass-header {
     justify-items: start;
     text-align: left;
+  }
+
+  .liquid-glass-container:not(.liquid-glass-grade-container) > .liquid-glass-header,
+  .liquid-glass-grade-container > .liquid-glass-header {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .liquid-glass-container:not(.liquid-glass-grade-container) > .liquid-glass-header .liquid-glass-icon-wrapper,
+  .liquid-glass-grade-container > .liquid-glass-header .liquid-glass-icon-wrapper {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .liquid-glass-container:not(.liquid-glass-grade-container) > .liquid-glass-header .liquid-glass-title,
+  .liquid-glass-grade-container > .liquid-glass-header .liquid-glass-title {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .liquid-glass-container:not(.liquid-glass-grade-container) > .liquid-glass-header .liquid-glass-subtitle,
+  .liquid-glass-container:not(.liquid-glass-grade-container) > .liquid-glass-header .liquid-glass-subtitle-small,
+  .liquid-glass-grade-container > .liquid-glass-header .liquid-glass-subtitle-small,
+  .liquid-glass-grade-container > .liquid-glass-header .liquid-glass-mode-switch,
+  .liquid-glass-grade-container > .liquid-glass-header .liquid-glass-mode-explainer,
+  .liquid-glass-grade-container > .liquid-glass-header .liquid-glass-secondary-button {
+    grid-column: 1 / -1;
   }
 
   .liquid-glass-title {

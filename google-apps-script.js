@@ -76,44 +76,11 @@ function doPost(e) {
 
     const yearLevel = data.yearLevel || 'Year 8';
     const currentTerm = data.currentTerm || 'Unknown Term';
-    let table = null;
 
     if (body.getNumChildren() === 0 || body.getText().trim() === '') {
       body.appendParagraph('GPA Records').setHeading(DocumentApp.ParagraphHeading.HEADING1);
-      body.appendParagraph('Use this table to compare saved GPA snapshots by year level and term.');
+      body.appendParagraph('Saved GPA snapshots from the GPA Calculator.');
       body.appendParagraph('');
-    }
-
-    const tables = body.getTables();
-    for (let i = 0; i < tables.length; i++) {
-      const candidate = tables[i];
-      if (candidate.getNumRows() > 0 && candidate.getRow(0).getNumCells() >= 7) {
-        const firstCellText = candidate.getRow(0).getCell(0).getText();
-        if (firstCellText === 'Saved At') {
-          table = candidate;
-          break;
-        }
-      }
-    }
-
-    if (!table) {
-      body.appendParagraph('Comparison Table').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-      table = body.appendTable();
-      const headerRow = table.appendTableRow();
-      headerRow.appendTableCell('Saved At');
-      headerRow.appendTableCell('Year Level');
-      headerRow.appendTableCell('Term');
-      headerRow.appendTableCell('Student Name');
-      headerRow.appendTableCell('GPA');
-      headerRow.appendTableCell('Completed');
-      headerRow.appendTableCell('Subjects');
-
-      for (let i = 0; i < headerRow.getNumCells(); i++) {
-        const cell = headerRow.getCell(i);
-        cell.setBackgroundColor('#2563EB');
-        cell.getChild(0).asText().setForegroundColor('#FFFFFF').setBold(true);
-        cell.setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(8).setPaddingRight(8);
-      }
     }
 
     // Format the data
@@ -122,27 +89,14 @@ function doPost(e) {
     const totalSubjects = Number(data.totalSubjects || (data.subjects || []).length);
     const subjectsText = data.subjects
       .map(s => `${s.subject}: ${s.finalGrade || 'Incomplete'}`)
-      .join('\n');
+      .join(', ');
 
-    // Add new row
-    const newRow = table.appendTableRow();
-    newRow.appendTableCell(timestamp);
-    newRow.appendTableCell(yearLevel);
-    newRow.appendTableCell(currentTerm);
-    newRow.appendTableCell(data.studentName);
-    newRow.appendTableCell(String(data.gpa || data.currentGpa || 'N/A'));
-    newRow.appendTableCell(`${completedSubjects}/${totalSubjects}`);
-    newRow.appendTableCell(subjectsText);
-
-    // Style the new row
-    for (let i = 0; i < newRow.getNumCells(); i++) {
-      const cell = newRow.getCell(i);
-      cell.setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(8).setPaddingRight(8);
-      if (table.getNumRows() % 2 === 0) {
-        cell.setBackgroundColor('#F3F4F6');
-      }
-      cell.getChild(0).asText().setForegroundColor('#000000');
-    }
+    body.appendParagraph('');
+    body.appendParagraph(`${data.studentName} - ${yearLevel} ${currentTerm}`).setHeading(DocumentApp.ParagraphHeading.HEADING2);
+    body.appendParagraph(`Saved at: ${timestamp}`);
+    body.appendParagraph(`GPA: ${data.gpa || data.currentGpa || 'N/A'} out of 15.00`);
+    body.appendParagraph(`Subjects counted: ${completedSubjects}/${totalSubjects}`);
+    body.appendParagraph(`Subjects: ${subjectsText}`);
     
     // Save the document
     doc.saveAndClose();
@@ -152,7 +106,7 @@ function doPost(e) {
     return ContentService.createTextOutput(
       JSON.stringify({
         success: true,
-        message: `Successfully added ${data.studentName}'s ${yearLevel} ${currentTerm} GPA (${data.gpa || data.currentGpa}) to the comparison table!`,
+        message: `Successfully saved ${data.studentName}'s ${yearLevel} ${currentTerm} GPA (${data.gpa || data.currentGpa}) to Google Docs!`,
         docUrl: `https://docs.google.com/document/d/${GOOGLE_DOC_ID}/edit`
       })
     )
