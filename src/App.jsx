@@ -91,7 +91,7 @@ const SEMESTER_SUBJECTS = new Set(ELECTIVE_SUBJECTS.filter(subject => !LANGUAGE_
 // Three-term subjects (0.6 weight) - have Term 1, 2, 3 (no Term 4)
 const THREE_TERM_SUBJECTS = new Set([...LANGUAGE_SUBJECTS, 'Health and Physical Education'])
 const GOOGLE_DOC_ID = '1ICuIvuBC-uTpdKCgQWYNKqAfPfnOzOQPIyLYMoXhqvo'
-const GOOGLE_APPS_SCRIPT_URL = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbyjgbJvf_vTYx3WzoKqL0Tah8QsHYiPvaL3WPlThWpQAFMB9z0nvDKbqT2RigFMaYyI/exec'
+const GOOGLE_APPS_SCRIPT_URL = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbxlIQmLRq6a2iwm3CUqN92skJP36iUuX26XYE6jfQ96K-TO8ULQhKdFR7mBlTkCln4/exec'
 const LOCAL_STORAGE_KEY = 'gpa-calculator-state-v1'
 const createLocalDate = (dateString) => {
   const [year, month, day] = dateString.split('-').map(Number)
