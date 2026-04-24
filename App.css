@@ -5,15 +5,15 @@
   --surface-blue: #eef6ff;
   --text: #172033;
   --text-muted: #5d6678;
-  --text-soft: #7a8598;
+  --text-soft: #667085;
   --line: #d9e1ee;
   --line-strong: #b9c6d8;
   --primary: #2563eb;
   --primary-strong: #1746a2;
   --primary-soft: #dbeafe;
-  --success: #168753;
+  --success: #0f6f43;
   --success-soft: #dff7ea;
-  --warning: #a15c00;
+  --warning: #8a4f00;
   --warning-soft: #fff0cf;
   --danger: #bc2b2b;
   --danger-soft: #ffe1e1;
@@ -574,7 +574,7 @@ button {
 }
 
 .liquid-glass-save-button:hover {
-  background: #0f6f43;
+  background: #0b5e38;
 }
 
 .liquid-glass-save-card {
@@ -801,6 +801,11 @@ button {
   outline: none;
 }
 
+.liquid-glass-select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
 .liquid-glass-select:hover,
 .liquid-glass-input:hover {
   border-color: #8ea2be;
@@ -902,6 +907,11 @@ button {
   background: var(--primary);
   border-color: var(--primary);
   color: #ffffff;
+}
+
+.liquid-glass-subject-nav-button.is-active .liquid-glass-subject-nav-weight {
+  color: #ffffff;
+  opacity: 1;
 }
 
 .liquid-glass-subject-nav-name {
@@ -1112,6 +1122,7 @@ button {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
+  color: var(--text);
 }
 
 .liquid-glass-final-grade-item {
@@ -1172,8 +1183,9 @@ button {
 }
 
 .liquid-glass-add-target-button:disabled {
-  background: #d9e1ee;
-  color: #8c98aa;
+  background: #e5ebf3;
+  color: #536074;
+  border-color: #cbd5e1;
   cursor: not-allowed;
 }
 
@@ -1387,12 +1399,12 @@ button {
 }
 
 .liquid-glass-dialog-save:hover {
-  background: #0f6f43;
+  background: #0b5e38;
 }
 
 .liquid-glass-dialog-save:disabled {
-  background: #d9e1ee;
-  color: #8c98aa;
+  background: #e5ebf3;
+  color: #536074;
   cursor: not-allowed;
 }
 
