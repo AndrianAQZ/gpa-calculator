@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox.jsx'
 import { Input } from '@/components/ui/input.jsx'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog.jsx'
-import { Calculator, GraduationCap, BookOpen, Target, Sparkles, Calendar, Save, FileText, Trophy, AlertTriangle, ToggleLeft, ToggleRight, Info } from 'lucide-react'
+import { Calculator, GraduationCap, BookOpen, Target, Sparkles, Calendar, Save, FileText, Trophy, AlertTriangle, ToggleLeft, ToggleRight, Info, X } from 'lucide-react'
 import '../App.css'
 
 const CORE_SUBJECTS = ['English', 'Health and Physical Education', 'History', 'Mathematics', 'Science']
@@ -481,6 +481,13 @@ function App() {
       const weight = SUBJECTS[subject]
       const finalGrade = finalGrades[subject]
       const allTermsForSubject = getAllTermsForSubject(subject)
+      const finalOverrideGrade = overrides[subject]?.__final
+
+      if (finalOverrideGrade) {
+        totalWeightedScore += GRADES[finalOverrideGrade] * weight
+        totalWeight += weight
+        return
+      }
 
       if (finalGrade && finalGrade.points) {
         totalWeightedScore += finalGrade.points * weight
@@ -586,13 +593,38 @@ function App() {
 
   const getFutureImprovementSuggestions = (projectedGPA) => {
     if (!projectedGPA || projectedGPA <= 0) {
-      return { possible: false, suggestions: [] }
+      return { possible: false, reason: 'no-projection', suggestions: [] }
     }
 
     const suggestions = []
     const currentTermIndex = TERMS.indexOf(currentTerm)
 
     selectedSubjects.forEach(subject => {
+      const finalGrade = finalGrades[subject]
+      if (finalGrade?.grade) {
+        const gradeIndex = GRADE_OPTIONS.indexOf(finalGrade.grade)
+        if (gradeIndex > 0) {
+          const higherGrade = GRADE_OPTIONS[gradeIndex - 1]
+          const improvedGPA = calculateProjectedGPA({
+            [subject]: {
+              __final: higherGrade
+            }
+          })
+          const impact = improvedGPA - projectedGPA
+
+          if (impact > 0.005) {
+            suggestions.push({
+              subject,
+              term: 'Final grade',
+              from: finalGrade.grade,
+              to: higherGrade,
+              impact: impact.toFixed(2)
+            })
+          }
+        }
+        return
+      }
+
       const subjectExpectedGrades = expectedGrades[subject]
       if (!subjectExpectedGrades) {
         return
@@ -638,6 +670,11 @@ function App() {
 
     return {
       possible: suggestions.length > 0,
+      reason: suggestions.length > 0
+        ? 'suggestions'
+        : hasPendingFutureTerms
+        ? 'needs-expected-grades'
+        : 'maxed-or-locked',
       suggestions: suggestions.slice(0, 3)
     }
   }
@@ -1929,9 +1966,10 @@ function App() {
                                   <button
                                     onClick={() => setTargetGPAs(targetGPAs.filter(gpa => gpa !== targetGPA))}
                                     className="liquid-glass-remove-target-button"
-                                    title="Remove this target"
+                                    title="Remove target GPA"
+                                    aria-label={`Remove target GPA ${targetGPA}`}
                                   >
-                                    Remove
+                                    <X aria-hidden="true" />
                                   </button>
                                 )}
                               </div>
@@ -1999,7 +2037,7 @@ function App() {
                       <div className="liquid-glass-gpa-number">
                         {projectedGPA && projectedGPA > 0 ? projectedGPA.toFixed(2) : '--'}
                       </div>
-                      <div className="liquid-glass-gpa-max">based on your expected grades</div>
+                      <div className="liquid-glass-gpa-max">based on locked and expected grades</div>
                       <div className="liquid-glass-gpa-note">
                         {enteredFinalGradeCount} of {selectedSubjects.length} subjects locked in
                       </div>
@@ -2014,7 +2052,7 @@ function App() {
                       Where to Improve
                     </div>
                     <p className="liquid-glass-card-description">
-                      Biggest GPA gains from your expected grades
+                      Biggest GPA gains from grades that can still improve
                     </p>
                   </div>
                   <div className="liquid-glass-card-content">
@@ -2035,7 +2073,11 @@ function App() {
                       </div>
                     ) : (
                       <p className="liquid-glass-muted-text">
-                        Add expected grades for any unfinished terms to unlock personalized improvement ideas.
+                        {futureSuggestions.reason === 'needs-expected-grades'
+                          ? 'Add expected grades for any unfinished terms to unlock personalized improvement ideas.'
+                          : futureSuggestions.reason === 'maxed-or-locked'
+                          ? 'All counted grades are already locked at the best available improvement points.'
+                          : 'Enter grades or expectations to unlock personalized improvement ideas.'}
                       </p>
                     )}
                   </div>
@@ -2112,9 +2154,11 @@ function App() {
                                   <button
                                     type="button"
                                     className="liquid-glass-remove-target-button"
+                                    title="Remove target GPA"
+                                    aria-label={`Remove target GPA ${targetGPA}`}
                                     onClick={() => setTargetGPAs(targetGPAs.filter(target => target !== targetGPA))}
                                   >
-                                    -
+                                    <X aria-hidden="true" />
                                   </button>
                                 )}
                               </div>
