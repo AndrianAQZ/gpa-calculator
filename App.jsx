@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx'
@@ -104,15 +104,6 @@ function App() {
   const [isSaving, setIsSaving] = useState(false)
   const [saveAttempts, setSaveAttempts] = useState(0)
   const [activeSubjectIndex, setActiveSubjectIndex] = useState(0)
-  const [showSettingsDialog, setShowSettingsDialog] = useState(false)
-  const [autoPromptSave, setAutoPromptSave] = useState(() => {
-    try {
-      const v = localStorage.getItem('gpaCalculatorAutoPrompt')
-      return v === null ? true : v === 'true'
-    } catch {
-      return true
-    }
-  })
   const [theme, setTheme] = useState(() => {
     try {
       const savedTheme = localStorage.getItem(THEME_STORAGE_KEY)
@@ -524,29 +515,19 @@ function App() {
     }
   }, [finalGrades, selectedSubjects])
 
-  // Show save dialog when GPA is calculated and all subjects have grades (respect user preference)
+  // Show save dialog when GPA is calculated and all subjects have grades
   useEffect(() => {
-    if (!autoPromptSave) return
     if (yearlyGPA && yearlyGPA > 0 && selectedSubjects.length > 0) {
       const allSubjectsHaveGrades = selectedSubjects.every(subject => finalGrades[subject])
       if (allSubjectsHaveGrades && saveAttempts < 5) {
         setTimeout(() => setShowSaveDialog(true), 1000)
       }
     }
-  }, [yearlyGPA, finalGrades, selectedSubjects, saveAttempts, autoPromptSave])
+  }, [yearlyGPA, finalGrades, selectedSubjects, saveAttempts])
 
   useEffect(() => {
     localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(theme))
   }, [theme])
-
-  // persist auto prompt preference
-  useEffect(() => {
-    try {
-      localStorage.setItem('gpaCalculatorAutoPrompt', autoPromptSave ? 'true' : 'false')
-    } catch {}
-  }, [autoPromptSave])
-
-  const resultsRef = useRef(null)
 
   useEffect(() => {
     setActiveSubjectIndex(index => Math.max(0, Math.min(index, selectedSubjects.length - 1)))
@@ -592,19 +573,6 @@ function App() {
   }
   const goToPreviousSubject = () => {
     setActiveSubjectIndex(index => Math.max(index - 1, 0))
-  }
-
-  const allSubjectsHaveGrades = selectedSubjects.length > 0 && selectedSubjects.every(subject => finalGrades[subject])
-
-  const handleSubjectNextClick = () => {
-    const isLast = activeSubjectIndex >= selectedSubjects.length - 1
-    if (isLast) {
-      if (allSubjectsHaveGrades) {
-        if (resultsRef && resultsRef.current) resultsRef.current.scrollIntoView({ behavior: 'smooth' })
-      }
-      return
-    }
-    goToNextSubject()
   }
 
   if (currentStep === 'selection') {
@@ -687,15 +655,9 @@ function App() {
           </div>
           <h1 className="liquid-glass-title">GPA Calculator</h1>
           <p className="liquid-glass-subtitle-small">Enter your grades using terms or final grades from D2L</p>
-          <div className="liquid-glass-header-actions">
-            <button onClick={resetCalculator} className="liquid-glass-button liquid-glass-secondary-button">
-              Change Subjects
-            </button>
-            <button onClick={() => setShowSettingsDialog(true)} className="liquid-glass-button liquid-glass-secondary-button">
-              <Palette />
-              Settings
-            </button>
-          </div>
+          <button onClick={resetCalculator} className="liquid-glass-button liquid-glass-secondary-button">
+            Change Subjects
+          </button>
         </div>
 
         <div className="liquid-glass-grade-layout">
@@ -930,11 +892,11 @@ function App() {
                         )}
                         <div className="liquid-glass-subject-next-row">
                           <button
-                            onClick={handleSubjectNextClick}
-                            disabled={activeSubjectIndex >= selectedSubjects.length - 1 && !allSubjectsHaveGrades}
+                            onClick={goToNextSubject}
+                            disabled={activeSubjectIndex >= selectedSubjects.length - 1}
                             className="liquid-glass-button liquid-glass-primary-button"
                           >
-                            <span>{activeSubjectIndex >= selectedSubjects.length - 1 ? (allSubjectsHaveGrades ? 'See your GPA' : 'All Subjects Entered') : 'Next Subject'}</span>
+                            <span>{activeSubjectIndex >= selectedSubjects.length - 1 ? 'All Subjects Entered' : 'Next Subject'}</span>
                             <ChevronRight className="liquid-glass-button-icon" />
                           </button>
                         </div>
@@ -947,7 +909,7 @@ function App() {
           </div>
 
           {/* Results Section */}
-          <div className="liquid-glass-results" ref={resultsRef}>
+          <div className="liquid-glass-results">
             {/* Current GPA */}
             <div className="liquid-glass-card liquid-glass-gpa-card">
               <div className="liquid-glass-card-header">
@@ -966,7 +928,22 @@ function App() {
               </div>
             </div>
 
-            {/* Grade Summary (list all grades) */}
+            {/* Save to Google Doc Button */}
+            {gpa && gpa > 0 && (
+              <div className="liquid-glass-card">
+                <div className="liquid-glass-card-content">
+                  <button 
+                    onClick={() => setShowSaveDialog(true)}
+                    className="liquid-glass-button liquid-glass-save-button"
+                  >
+                    <Save className="liquid-glass-button-icon-left" />
+                    <span>Save to Google Doc</span>
+                    <FileText className="liquid-glass-button-icon" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="liquid-glass-card liquid-glass-summary-card">
               <div className="liquid-glass-card-header">
                 <div className="liquid-glass-card-title">
@@ -994,21 +971,50 @@ function App() {
               </div>
             </div>
 
-            {/* Save to Google Doc Button (after grades list) */}
-            {gpa && gpa > 0 && (
-              <div className="liquid-glass-card">
-                <div className="liquid-glass-card-content">
-                  <button 
-                    onClick={() => setShowSaveDialog(true)}
-                    className="liquid-glass-button liquid-glass-save-button"
-                  >
-                    <Save className="liquid-glass-button-icon-left" />
-                    <span>Save to Google Doc</span>
-                    <FileText className="liquid-glass-button-icon" />
-                  </button>
+            <div className="liquid-glass-card liquid-glass-theme-card">
+              <div className="liquid-glass-card-header">
+                <div className="liquid-glass-card-title">
+                  <Palette className="liquid-glass-card-icon" />
+                  Theme
+                </div>
+                <p className="liquid-glass-card-description">
+                  Change the colors and keep them for next time.
+                </p>
+              </div>
+              <div className="liquid-glass-card-content">
+                <Select onValueChange={applyThemePreset}>
+                  <SelectTrigger className="liquid-glass-select">
+                    <SelectValue placeholder="Choose a preset" />
+                  </SelectTrigger>
+                  <SelectContent className="liquid-glass-select-content">
+                    {Object.keys(THEME_PRESETS).map(preset => (
+                      <SelectItem key={preset} value={preset} className="liquid-glass-select-item">
+                        {preset}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="liquid-glass-theme-grid">
+                  {[
+                    ['primary', 'Main'],
+                    ['primaryStrong', 'Dark main'],
+                    ['background', 'Background'],
+                    ['surface', 'Cards'],
+                    ['text', 'Text'],
+                    ['accent', 'Accent']
+                  ].map(([key, label]) => (
+                    <label key={key} className="liquid-glass-color-control">
+                      <span>{label}</span>
+                      <input
+                        type="color"
+                        value={theme[key]}
+                        onChange={(event) => handleThemeChange(key, event.target.value)}
+                      />
+                    </label>
+                  ))}
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Grade Requirements */}
             <div className="liquid-glass-card liquid-glass-requirements-card">
@@ -1123,103 +1129,6 @@ function App() {
                   </>
                 )}
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Settings Dialog */}
-        <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
-          <DialogContent className="liquid-glass-dialog">
-            <DialogHeader>
-              <DialogTitle className="liquid-glass-dialog-title">
-                <Palette className="liquid-glass-dialog-icon" />
-                Settings
-              </DialogTitle>
-              <DialogDescription className="liquid-glass-dialog-description">
-                Change theme, current term, reset saved data, and other preferences.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="liquid-glass-dialog-content">
-              <div className="liquid-glass-settings-section">
-                <h4>Theme Presets</h4>
-                <Select onValueChange={applyThemePreset}>
-                  <SelectTrigger className="liquid-glass-select">
-                    <SelectValue placeholder="Choose a preset" />
-                  </SelectTrigger>
-                  <SelectContent className="liquid-glass-select-content">
-                    {Object.keys(THEME_PRESETS).map(preset => (
-                      <SelectItem key={preset} value={preset} className="liquid-glass-select-item">
-                        {preset}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <div className="liquid-glass-theme-grid">
-                  {[
-                    ['primary', 'Main'],
-                    ['primaryStrong', 'Dark main'],
-                    ['background', 'Background'],
-                    ['surface', 'Cards'],
-                    ['text', 'Text'],
-                    ['accent', 'Accent']
-                  ].map(([key, label]) => (
-                    <label key={key} className="liquid-glass-color-control">
-                      <span>{label}</span>
-                      <input
-                        type="color"
-                        value={theme[key]}
-                        onChange={(event) => handleThemeChange(key, event.target.value)}
-                      />
-                    </label>
-                  ))}
-                </div>
-
-                <div style={{ marginTop: 12 }}>
-                  <h4>Current Term</h4>
-                  <Select value={currentTerm} onValueChange={setCurrentTerm}>
-                    <SelectTrigger className="liquid-glass-select">
-                      <SelectValue placeholder="Choose a term" />
-                    </SelectTrigger>
-                    <SelectContent className="liquid-glass-select-content">
-                      {TERMS.map(term => (
-                        <SelectItem key={term} value={term} className="liquid-glass-select-item">
-                          {term}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div style={{ marginTop: 12 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Checkbox checked={autoPromptSave} onCheckedChange={(v) => setAutoPromptSave(!!v)} />
-                    <span>Automatically prompt to save when all grades entered</span>
-                  </label>
-                </div>
-
-                <div style={{ marginTop: 12 }}>
-                  <Button
-                    variant="destructive"
-                    onClick={() => {
-                      if (!confirm('Reset the app and clear saved records? This cannot be undone.')) return
-                      try { localStorage.removeItem(LOCAL_SAVE_KEY); localStorage.removeItem(THEME_STORAGE_KEY) } catch {}
-                      setTheme(DEFAULT_THEME)
-                      setShowSettingsDialog(false)
-                      resetCalculator()
-                    }}
-                    className="liquid-glass-dialog-button"
-                  >
-                    Reset App (clear saved data)
-                  </Button>
-                </div>
-
-              </div>
-            </div>
-
-            <DialogFooter className="liquid-glass-dialog-footer">
-              <Button onClick={() => setShowSettingsDialog(false)} variant="outline" className="liquid-glass-dialog-button">Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
