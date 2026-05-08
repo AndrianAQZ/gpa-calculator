@@ -4220,3 +4220,612 @@ body {
     min-height: 70px;
   }
 }
+
+/* Final minimal GPA calculator UI */
+.gpa-final-app {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  --gpa-border: color-mix(in srgb, var(--text) 18%, transparent);
+  --gpa-border-strong: color-mix(in srgb, var(--text) 28%, transparent);
+  --gpa-muted: color-mix(in srgb, var(--text) 72%, transparent);
+  --gpa-soft-muted: color-mix(in srgb, var(--text) 58%, transparent);
+  --gpa-card-bg: var(--surface);
+  --gpa-control-bg: color-mix(in srgb, var(--surface) 92%, var(--bg) 8%);
+  --gpa-control-bg-hover: color-mix(in srgb, var(--surface) 82%, var(--primary) 18%);
+  --gpa-control-text: var(--text);
+  --gpa-shadow: 0 10px 24px rgba(25, 42, 70, 0.08);
+}
+
+.gpa-final-page {
+  width: min(1120px, calc(100% - 40px));
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 18px 0 34px;
+}
+
+.gpa-final-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 40px;
+  margin-bottom: 16px;
+}
+
+.gpa-final-topbar-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.gpa-icon-button {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--gpa-border);
+  border-radius: 8px;
+  background: var(--gpa-card-bg);
+  color: var(--text);
+  box-shadow: 0 6px 16px rgba(25, 42, 70, 0.06);
+}
+
+.gpa-icon-button svg {
+  width: 17px;
+  height: 17px;
+}
+
+.gpa-selection-panel {
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  padding-top: 48px;
+  transition: opacity 280ms cubic-bezier(.2, .8, .2, 1), transform 280ms cubic-bezier(.2, .8, .2, 1);
+}
+
+.gpa-selection-panel.is-transitioning {
+  opacity: 0;
+  transform: scale(0.985);
+}
+
+.gpa-selection-panel h1,
+.gpa-target-card h1 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.1;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.gpa-selected-count {
+  color: color-mix(in srgb, var(--text) 68%, transparent);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.gpa-elective-grid {
+  width: min(820px, 100%);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.gpa-elective-button {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--gpa-border);
+  border-radius: 8px;
+  background: var(--gpa-control-bg);
+  color: var(--gpa-control-text);
+  font-size: 14px;
+  font-weight: 680;
+  text-align: left;
+  box-shadow: 0 8px 22px rgba(25, 42, 70, 0.06);
+}
+
+.gpa-elective-button:hover:not(:disabled),
+.gpa-grade-button:hover {
+  border-color: color-mix(in srgb, var(--primary) 62%, transparent);
+}
+
+.gpa-elective-button.is-selected,
+.gpa-grade-button.is-selected {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 22%, var(--surface));
+  color: var(--text);
+}
+
+.gpa-elective-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.gpa-elective-button svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.gpa-target-stage {
+  min-height: calc(100vh - 120px);
+  display: grid;
+  place-items: center;
+}
+
+.gpa-target-card {
+  width: min(420px, 100%);
+  display: grid;
+  gap: 18px;
+  padding: 30px;
+  border: 1px solid var(--gpa-border);
+  border-radius: 8px;
+  background: var(--gpa-card-bg);
+  box-shadow: 0 18px 44px rgba(25, 42, 70, 0.11);
+  animation: gpaTargetIn 290ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+@keyframes gpaTargetIn {
+  from {
+    opacity: 0;
+    transform: scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.gpa-target-input,
+.gpa-save-form input,
+.gpa-settings-section input {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--gpa-border-strong);
+  border-radius: 8px;
+  background: var(--gpa-control-bg);
+  color: var(--gpa-control-text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.gpa-target-input::placeholder,
+.gpa-save-form input::placeholder,
+.gpa-settings-section input::placeholder {
+  color: var(--gpa-soft-muted);
+}
+
+.gpa-target-actions,
+.gpa-result-actions,
+.gpa-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gpa-primary-action,
+.gpa-secondary-action,
+.gpa-settings-section button,
+.gpa-reset-button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 15px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 760;
+}
+
+.gpa-primary-action {
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+.gpa-primary-action:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.gpa-secondary-action,
+.gpa-settings-section button,
+.gpa-reset-button {
+  border: 1px solid var(--gpa-border-strong);
+  background: var(--gpa-control-bg);
+  color: var(--gpa-control-text);
+}
+
+.gpa-primary-action svg,
+.gpa-secondary-action svg,
+.gpa-reset-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.gpa-card {
+  border: 1px solid var(--gpa-border);
+  border-radius: 8px;
+  background: var(--gpa-card-bg);
+  box-shadow: var(--gpa-shadow);
+}
+
+.gpa-grade-card {
+  padding: 18px 20px;
+}
+
+.gpa-grade-workspace {
+  display: grid;
+  grid-template-columns: minmax(560px, 1fr) 220px;
+  gap: 20px;
+  align-items: center;
+}
+
+.gpa-grade-left {
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 10px;
+}
+
+.gpa-subject-heading-row {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+  width: min(620px, 100%);
+}
+
+.gpa-subject-heading-row h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.15;
+  font-weight: 780;
+}
+
+.gpa-subject-heading-row span {
+  flex: 0 0 auto;
+  color: var(--gpa-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.gpa-grade-button-table {
+  width: min(620px, 100%);
+  display: grid;
+  gap: 7px;
+}
+
+.gpa-grade-button-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+
+.gpa-grade-button {
+  height: 38px;
+  border: 1px solid var(--gpa-border-strong);
+  border-radius: 8px;
+  background: var(--gpa-control-bg);
+  color: var(--gpa-control-text);
+  font-size: 15px;
+  font-weight: 780;
+}
+
+.gpa-grade-button:hover {
+  background: var(--gpa-control-bg-hover);
+}
+
+.gpa-grade-right {
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  padding-left: 18px;
+  border-left: 1px solid var(--gpa-border);
+}
+
+.gpa-grade-right span {
+  color: var(--gpa-muted);
+  font-size: 13px;
+  font-weight: 720;
+}
+
+.gpa-grade-right strong {
+  min-height: 62px;
+  display: grid;
+  place-items: center;
+  font-size: 46px;
+  line-height: 1;
+  color: var(--text);
+}
+
+.gpa-next-subject-button {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 780;
+}
+
+.gpa-next-subject-button:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.gpa-next-subject-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.gpa-lower-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.gpa-lower-grid.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.gpa-lower-card {
+  padding: 16px 18px;
+}
+
+.gpa-lower-card h2,
+.gpa-result-card h2,
+.gpa-settings-panel h2,
+.gpa-settings-section h3 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.gpa-lower-card h2 {
+  margin-bottom: 10px;
+  font-size: 16px;
+  font-weight: 780;
+}
+
+.gpa-card-heading-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.gpa-target-number {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.gpa-card-note {
+  margin: 0 0 10px;
+  color: var(--gpa-muted);
+  font-size: 12.5px;
+  line-height: 1.38;
+}
+
+.gpa-grade-list {
+  display: grid;
+  gap: 5px;
+}
+
+.gpa-grade-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 5.75rem;
+  align-items: center;
+  gap: 10px;
+  min-height: 25px;
+}
+
+.gpa-grade-subject {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 13.5px;
+  font-weight: 630;
+}
+
+.gpa-grade-column {
+  width: 5.75rem;
+  justify-self: end;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.gpa-grade-column.is-empty {
+  color: var(--gpa-soft-muted);
+  font-size: 12px;
+  font-weight: 690;
+}
+
+.gpa-result-card {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 34px 28px;
+  text-align: center;
+}
+
+.gpa-result-number {
+  font-size: 76px;
+  line-height: 0.95;
+  font-weight: 820;
+  color: var(--text);
+}
+
+.gpa-result-subtitle {
+  color: var(--gpa-muted);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.gpa-target-comparison {
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 780;
+}
+
+.gpa-target-comparison.is-met {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.gpa-target-comparison.is-short {
+  background: #fff2d9;
+  color: #8a4f00;
+}
+
+.gpa-result-actions {
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.gpa-save-form {
+  display: grid;
+  gap: 12px;
+}
+
+.gpa-save-form label,
+.gpa-settings-section label {
+  display: grid;
+  gap: 6px;
+  color: var(--gpa-muted);
+  font-size: 13px;
+  font-weight: 720;
+}
+
+.gpa-save-status,
+.gpa-save-error,
+.gpa-quiet-warning {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 650;
+}
+
+.gpa-save-status {
+  color: var(--success);
+}
+
+.gpa-save-error,
+.gpa-quiet-warning {
+  color: #a13b2b;
+}
+
+.gpa-settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(15, 23, 42, 0.18);
+}
+
+.gpa-settings-panel {
+  width: min(390px, calc(100% - 28px));
+  min-height: 100%;
+  padding: 18px;
+  background: var(--gpa-card-bg);
+  color: var(--text);
+  border-left: 1px solid var(--gpa-border);
+  box-shadow: -16px 0 40px rgba(25, 42, 70, 0.14);
+  overflow-y: auto;
+}
+
+.gpa-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.gpa-settings-panel h2 {
+  font-size: 22px;
+}
+
+.gpa-settings-section {
+  display: grid;
+  gap: 12px;
+  padding: 16px 0;
+  border-top: 1px solid var(--gpa-border);
+}
+
+.gpa-settings-section h3 {
+  font-size: 14px;
+  font-weight: 820;
+}
+
+.gpa-theme-presets {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.gpa-theme-colors {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.gpa-theme-colors input[type="color"] {
+  padding: 3px;
+}
+
+.gpa-settings-row {
+  align-items: stretch;
+}
+
+.gpa-settings-row input {
+  flex: 1 1 120px;
+}
+
+.gpa-reset-button {
+  justify-self: start;
+}
+
+@media (max-width: 820px) {
+  .gpa-final-page {
+    width: min(100% - 24px, 1120px);
+    padding-top: 14px;
+  }
+
+  .gpa-elective-grid,
+  .gpa-grade-workspace,
+  .gpa-lower-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gpa-grade-right {
+    padding-left: 0;
+    padding-top: 18px;
+    border-left: 0;
+    border-top: 1px solid var(--gpa-border);
+  }
+
+  .gpa-selection-panel h1,
+  .gpa-target-card h1 {
+    font-size: 28px;
+  }
+
+  .gpa-result-number {
+    font-size: 58px;
+  }
+}

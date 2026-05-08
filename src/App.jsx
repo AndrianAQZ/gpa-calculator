@@ -1,10 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button.jsx'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.jsx'
-import { Checkbox } from '@/components/ui/checkbox.jsx'
-import { Input } from '@/components/ui/input.jsx'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog.jsx'
-import { Calculator, GraduationCap, BookOpen, Target, Sparkles, Calendar, Save, FileText, Trophy, AlertTriangle, ToggleLeft, ToggleRight, Info, X, ChevronRight, Palette } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Calculator, Check, ChevronRight, Palette, RotateCcw, Save, Settings, X } from 'lucide-react'
 import '../App.css'
 
 const CORE_SUBJECTS = ['English', 'Health and Physical Education', 'History', 'Mathematics', 'Science']
@@ -26,70 +21,42 @@ const LANGUAGE_SUBJECTS = new Set(['Spanish', 'Japanese'])
 const DEFAULT_ELECTIVE_WEIGHT = 0.3
 const LANGUAGE_ELECTIVE_WEIGHT = 0.3
 const CORE_SUBJECT_WEIGHTS = {
-  'English': 1.0,
+  English: 1.0,
   'Health and Physical Education': 0.6,
-  'History': 1.0,
-  'Mathematics': 1.0,
-  'Science': 1.0
+  History: 1.0,
+  Mathematics: 1.0,
+  Science: 1.0
 }
 const SUBJECTS = {
   ...CORE_SUBJECT_WEIGHTS,
-  ...Object.fromEntries(ELECTIVE_SUBJECTS.map(subject => [subject, LANGUAGE_SUBJECTS.has(subject) ? LANGUAGE_ELECTIVE_WEIGHT : DEFAULT_ELECTIVE_WEIGHT]))
+  ...Object.fromEntries(
+    ELECTIVE_SUBJECTS.map(subject => [
+      subject,
+      LANGUAGE_SUBJECTS.has(subject) ? LANGUAGE_ELECTIVE_WEIGHT : DEFAULT_ELECTIVE_WEIGHT
+    ])
+  )
 }
-
-const createDefaultGradeModes = () =>
-  CORE_SUBJECTS.reduce((acc, subject) => {
-    acc[subject] = 'terms'
-    return acc
-  }, {})
 
 const GRADES = {
-  'A+': 15, 'A': 14, 'A-': 13,
-  'B+': 12, 'B': 11, 'B-': 10,
-  'C+': 9, 'C': 8, 'C-': 7,
-  'D+': 6, 'D': 5, 'D-': 4,
-  'F+': 3, 'F': 2, 'F-': 1
+  'A+': 15, A: 14, 'A-': 13,
+  'B+': 12, B: 11, 'B-': 10,
+  'C+': 9, C: 8, 'C-': 7,
+  'D+': 6, D: 5, 'D-': 4,
+  'F+': 3, F: 2, 'F-': 1
 }
 
+const GRADE_ROWS = [
+  ['A+', 'A', 'A-'],
+  ['B+', 'B', 'B-'],
+  ['C+', 'C', 'C-'],
+  ['D+', 'D', 'D-'],
+  ['F+', 'F', 'F-']
+]
 const GRADE_OPTIONS = Object.keys(GRADES)
 const MIN_GPA_VALUE = 0.1
 const MAX_GPA_VALUE = 15
-const getClosestGradeForPoints = (points) => {
-  let closestGrade = 'F-'
-  let closestDiff = Infinity
-
-  Object.entries(GRADES).forEach(([grade, value]) => {
-    const diff = Math.abs(value - points)
-    if (diff < closestDiff) {
-      closestGrade = grade
-      closestDiff = diff
-    }
-  })
-
-  return closestGrade
-}
 const MAX_ELECTIVES = 4
-const MAX_SUBJECTS = CORE_SUBJECTS.length + MAX_ELECTIVES
 const TERMS = ['Term 1', 'Term 2', 'Term 3', 'Term 4']
-const QUEENSLAND_TERM_DATES = {
-  2026: [
-    { term: 'Term 1', start: '2026-01-27', end: '2026-04-02' },
-    { term: 'Term 2', start: '2026-04-20', end: '2026-06-26' },
-    { term: 'Term 3', start: '2026-07-13', end: '2026-09-18' },
-    { term: 'Term 4', start: '2026-10-06', end: '2026-12-11' }
-  ],
-  2027: [
-    { term: 'Term 1', start: '2027-01-27', end: '2027-03-25' },
-    { term: 'Term 2', start: '2027-04-12', end: '2027-06-25' },
-    { term: 'Term 3', start: '2027-07-12', end: '2027-09-17' },
-    { term: 'Term 4', start: '2027-10-05', end: '2027-12-10' }
-  ]
-}
-const FINAL_TERMS = new Set(['Term 2', 'Term 4'])
-// Semester subjects (0.3 weight) - only have Term 1-2 OR Term 3-4
-const SEMESTER_SUBJECTS = new Set(ELECTIVE_SUBJECTS.filter(subject => !LANGUAGE_SUBJECTS.has(subject)))
-// Three-term subjects (0.6 weight) - have Term 1, 2, 3 (no Term 4)
-const THREE_TERM_SUBJECTS = new Set([...LANGUAGE_SUBJECTS, 'Health and Physical Education'])
 const GOOGLE_DOC_ID = '1ICuIvuBC-uTpdKCgQWYNKqAfPfnOzOQPIyLYMoXhqvo'
 const GOOGLE_APPS_SCRIPT_URL = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbxlIQmLRq6a2iwm3CUqN92skJP36iUuX26XYE6jfQ96K-TO8ULQhKdFR7mBlTkCln4/exec'
 const LOCAL_STORAGE_KEY = 'gpa-calculator-state-v1'
@@ -130,36 +97,41 @@ const THEME_PRESETS = {
     accent: '#22c55e'
   }
 }
-const createLocalDate = (dateString) => {
-  const [year, month, day] = dateString.split('-').map(Number)
-  return new Date(year, month - 1, day)
+
+const createDefaultGradeModes = () =>
+  CORE_SUBJECTS.reduce((acc, subject) => {
+    acc[subject] = 'final'
+    return acc
+  }, {})
+
+const getDetectedTerm = () => {
+  const month = new Date().getMonth()
+  if (month <= 2) return 'Term 1'
+  if (month <= 5) return 'Term 2'
+  if (month <= 8) return 'Term 3'
+  return 'Term 4'
 }
 
-const getDetectedTermInfo = (date = new Date()) => {
-  const year = date.getFullYear()
-  const ranges = QUEENSLAND_TERM_DATES[year]
-  if (ranges) {
-    const today = new Date(year, date.getMonth(), date.getDate())
-    const activeRange = ranges.find(({ start, end }) => today >= createLocalDate(start) && today <= createLocalDate(end))
-    if (activeRange) {
-      return { term: activeRange.term, source: 'Queensland term dates', status: 'in-term' }
+const getClosestGradeForPoints = (points) => {
+  let closestGrade = 'F-'
+  let closestDiff = Infinity
+
+  Object.entries(GRADES).forEach(([grade, value]) => {
+    const diff = Math.abs(value - points)
+    if (diff < closestDiff) {
+      closestGrade = grade
+      closestDiff = diff
     }
+  })
 
-    const upcomingRange = ranges.find(({ start }) => today < createLocalDate(start))
-    if (upcomingRange) {
-      return { term: upcomingRange.term, source: 'Queensland term dates', status: 'upcoming' }
-    }
-
-    return { term: ranges[ranges.length - 1].term, source: 'Queensland term dates', status: 'after-year' }
-  }
-
-  const month = date.getMonth()
-  if (month <= 2) return { term: 'Term 1', source: 'month estimate', status: 'estimated' }
-  if (month <= 5) return { term: 'Term 2', source: 'month estimate', status: 'estimated' }
-  if (month <= 8) return { term: 'Term 3', source: 'month estimate', status: 'estimated' }
-  return { term: 'Term 4', source: 'month estimate', status: 'estimated' }
+  return closestGrade
 }
-const getDetectedTerm = () => getDetectedTermInfo().term
+
+const getCeilingGradeForPoints = (points) => {
+  const normalizedPoints = Math.max(1, points)
+  const match = [...GRADE_OPTIONS].reverse().find(grade => GRADES[grade] >= normalizedPoints)
+  return match || null
+}
 
 const sanitizePersistedSubjects = (persistedSubjects) => {
   if (!Array.isArray(persistedSubjects)) {
@@ -174,76 +146,64 @@ const sanitizePersistedSubjects = (persistedSubjects) => {
   return [...CORE_SUBJECTS, ...persistedElectives]
 }
 
-// Content moderation function
+const getOptionalTargetFromPersisted = (parsed) => {
+  if (Number.isFinite(Number(parsed?.targetGPA))) {
+    const target = Number(parsed.targetGPA)
+    return target >= MIN_GPA_VALUE && target <= MAX_GPA_VALUE ? target : null
+  }
+
+  if (Array.isArray(parsed?.targetGPAs) && parsed.targetGPAs.length === 1) {
+    const target = Number(parsed.targetGPAs[0])
+    return target >= MIN_GPA_VALUE && target <= MAX_GPA_VALUE ? target : null
+  }
+
+  return null
+}
+
 const isInappropriateName = (name) => {
   const lowerName = name.toLowerCase().trim()
-  
-  // List of inappropriate words/patterns
   const inappropriateWords = [
-    'fuck', 'shit', 'damn', 'bitch', 'ass', 'crap', 'piss', 'dick', 'cock', 
-    'pussy', 'cunt', 'bastard', 'whore', 'slut', 'nigger', 'nigga', 'fag', 
-    'faggot', 'retard', 'penis', 'vagina', 'sex', 'porn', 'xxx', 'kill', 
+    'fuck', 'shit', 'damn', 'bitch', 'ass', 'crap', 'piss', 'dick', 'cock',
+    'pussy', 'cunt', 'bastard', 'whore', 'slut', 'nigger', 'nigga', 'fag',
+    'faggot', 'retard', 'penis', 'vagina', 'sex', 'porn', 'xxx', 'kill',
     'die', 'death', 'hitler', 'nazi', 'kkk', 'terrorist', 'bomb', 'rape',
     'idiot', 'stupid', 'dumb', 'moron', 'loser', 'hate', 'kys'
   ]
-  
-  // Check if name contains any inappropriate words
-  for (let word of inappropriateWords) {
-    if (lowerName.includes(word)) {
-      return true
-    }
+
+  if (inappropriateWords.some(word => lowerName.includes(word))) {
+    return true
   }
-  
-  // Check for excessive special characters or numbers (likely fake names)
+
   const specialCharCount = (lowerName.match(/[^a-z\s\-']/g) || []).length
-  if (specialCharCount > 3) {
-    return true
-  }
-  
-  // Check if name is too short (less than 2 characters)
-  if (lowerName.replace(/\s/g, '').length < 2) {
-    return true
-  }
-  
-  // Check for repeated characters (like "aaaaaaa" or "111111")
-  const hasExcessiveRepetition = /(.)\1{4,}/.test(lowerName)
-  if (hasExcessiveRepetition) {
-    return true
-  }
-  
-  return false
+  return specialCharCount > 3 || lowerName.replace(/\s/g, '').length < 2 || /(.)\1{4,}/.test(lowerName)
 }
 
 function App() {
   const [currentStep, setCurrentStep] = useState('selection')
   const [selectedSubjects, setSelectedSubjects] = useState(() => [...CORE_SUBJECTS])
-  const [currentTerm, setCurrentTerm] = useState(() => getDetectedTerm())
-  const [gradeEntryModes, setGradeEntryModes] = useState(() => createDefaultGradeModes()) // { subject: 'terms' | 'final' }
-  const [termGrades, setTermGrades] = useState({}) // { subject: { 'Term 1': 'A', 'Term 2': 'B+', ... } }
-  const [directFinalGrades, setDirectFinalGrades] = useState({}) // { subject: 'A+' }
-  const [termFinalGrades, setTermFinalGrades] = useState({}) // { subject: 'A+' }
-  const [finalGrades, setFinalGrades] = useState({}) // Calculated final grades for each subject
+  const [activeSubjectIndex, setActiveSubjectIndex] = useState(0)
+  const [gradeEntryModes, setGradeEntryModes] = useState(() => createDefaultGradeModes())
+  const [termGrades, setTermGrades] = useState({})
+  const [directFinalGrades, setDirectFinalGrades] = useState({})
+  const [termFinalGrades, setTermFinalGrades] = useState({})
+  const [expectedGrades, setExpectedGrades] = useState({})
+  const [finalGrades, setFinalGrades] = useState({})
   const [gpa, setGpa] = useState(null)
   const [yearlyGPA, setYearlyGPA] = useState(null)
-  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [targetGPA, setTargetGPA] = useState(null)
+  const [targetInput, setTargetInput] = useState('')
+  const [settingsTargetInput, setSettingsTargetInput] = useState('')
   const [studentName, setStudentName] = useState('')
-  const [studentYearLevel, setStudentYearLevel] = useState('Year 8')
-  const [isSaving, setIsSaving] = useState(false)
+  const [studentYearLevel, setStudentYearLevel] = useState('')
+  const [currentTerm, setCurrentTerm] = useState(() => getDetectedTerm())
+  const [termSelectionMode, setTermSelectionMode] = useState('auto')
+  const [showSettings, setShowSettings] = useState(false)
+  const [isTargetTransitioning, setIsTargetTransitioning] = useState(false)
   const [saveStatusMessage, setSaveStatusMessage] = useState('')
   const [saveErrorMessage, setSaveErrorMessage] = useState('')
-  const [saveAttempts, setSaveAttempts] = useState(0)
-  const [userDismissedDialog, setUserDismissedDialog] = useState(false)
-  const [customTargetGPA, setCustomTargetGPA] = useState('')
-  const [targetGPAs, setTargetGPAs] = useState([13.5, 14.0, 14.5])
-  const [expectedGrades, setExpectedGrades] = useState({}) // { subject: { 'Term 2': 'A', 'Term 3': 'B+', ... } }
-  const [calculationMode, setCalculationMode] = useState('current')
-  const [activeSubject, setActiveSubject] = useState(() => CORE_SUBJECTS[0] || null)
-  const [showTargetGPADialog, setShowTargetGPADialog] = useState(false)
-  const [initialTargetGPA, setInitialTargetGPA] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
   const [hasHydratedState, setHasHydratedState] = useState(false)
   const [persistenceWarning, setPersistenceWarning] = useState(false)
-  const [termSelectionMode, setTermSelectionMode] = useState('auto')
-  const [showElectiveChooser, setShowElectiveChooser] = useState(true)
   const [theme, setTheme] = useState(() => {
     try {
       const savedTheme = localStorage.getItem(THEME_STORAGE_KEY)
@@ -252,10 +212,23 @@ function App() {
       return DEFAULT_THEME
     }
   })
-  const selectedElectiveCount = selectedSubjects.filter(subject => !CORE_SUBJECTS.includes(subject)).length
-  const selectedElectives = selectedSubjects.filter(subject => !CORE_SUBJECTS.includes(subject))
-  const detectedTermInfo = getDetectedTermInfo()
-  const detectedTerm = detectedTermInfo.term
+  const saveCardRef = useRef(null)
+
+  const selectedElectives = useMemo(
+    () => selectedSubjects.filter(subject => !CORE_SUBJECTS.includes(subject)),
+    [selectedSubjects]
+  )
+  const selectedElectiveCount = selectedElectives.length
+  const activeSubject = selectedSubjects[activeSubjectIndex] || selectedSubjects[0]
+  const selectedGrade = activeSubject ? finalGrades[activeSubject]?.grade || directFinalGrades[activeSubject] || '' : ''
+  const enteredFinalGradeCount = selectedSubjects.filter(subject => finalGrades[subject]).length
+  const allSubjectsEntered = enteredFinalGradeCount === selectedSubjects.length
+  const closestGpaGrade = gpa && gpa > 0 ? getClosestGradeForPoints(gpa) : null
+  const formatGpa = (value) => Number(value).toLocaleString(undefined, {
+    minimumFractionDigits: Number.isInteger(Number(value)) ? 0 : 1,
+    maximumFractionDigits: 2
+  })
+  const targetRequirements = targetGPA ? calculateRequiredGrades(targetGPA) : null
   const appThemeStyle = {
     '--bg': theme.background,
     '--surface': theme.surface,
@@ -266,204 +239,47 @@ function App() {
     '--text-soft': theme.text,
     '--primary': theme.primary,
     '--primary-strong': theme.primaryStrong,
-    '--primary-soft': `${theme.primary}22`,
+    '--primary-soft': `${theme.primary}20`,
     '--success': theme.accent,
-    '--success-soft': `${theme.accent}22`
+    '--success-soft': `${theme.accent}20`
   }
 
-  const handleSubjectToggle = (subject, checked) => {
-    if (CORE_SUBJECTS.includes(subject)) {
-      return
-    }
+  function calculateSubjectFinalGrade(subject) {
+    const mode = gradeEntryModes[subject] || 'final'
 
-    if (checked) {
-      if (selectedSubjects.includes(subject)) {
-        return
-      }
-      if (selectedElectiveCount < MAX_ELECTIVES) {
-        const updatedSubjects = [...selectedSubjects, subject]
-        setSelectedSubjects(updatedSubjects)
-        setGradeEntryModes(prev => ({ ...prev, [subject]: 'terms' }))
-        setActiveSubject(subject)
-        if (updatedSubjects.filter(s => !CORE_SUBJECTS.includes(s)).length >= MAX_ELECTIVES) {
-          setShowElectiveChooser(false)
-        }
-      } else {
-        alert(`You can select a maximum of ${MAX_ELECTIVES} elective subjects.`)
-      }
-    } else {
-      const updatedSubjects = selectedSubjects.filter(s => s !== subject)
-      setSelectedSubjects(updatedSubjects)
-      const newTermGrades = { ...termGrades }
-      delete newTermGrades[subject]
-      setTermGrades(newTermGrades)
-      const newDirectFinalGrades = { ...directFinalGrades }
-      delete newDirectFinalGrades[subject]
-      setDirectFinalGrades(newDirectFinalGrades)
-      const newFinalGrades = { ...finalGrades }
-      delete newFinalGrades[subject]
-      setFinalGrades(newFinalGrades)
-      const newTermFinalGrades = { ...termFinalGrades }
-      delete newTermFinalGrades[subject]
-      setTermFinalGrades(newTermFinalGrades)
-      const newGradeEntryModes = { ...gradeEntryModes }
-      delete newGradeEntryModes[subject]
-      setGradeEntryModes(newGradeEntryModes)
-      const newExpectedGrades = { ...expectedGrades }
-      delete newExpectedGrades[subject]
-      setExpectedGrades(newExpectedGrades)
-      if (activeSubject === subject) {
-        setActiveSubject(updatedSubjects[0] || null)
-      }
-      if (updatedSubjects.every(s => CORE_SUBJECTS.includes(s))) {
-        setShowElectiveChooser(true)
-      }
-    }
-  }
-
-  const handleGradeEntryModeToggle = (subject) => {
-    const currentMode = gradeEntryModes[subject] || 'terms'
-    const newMode = currentMode === 'terms' ? 'final' : 'terms'
-    
-    setGradeEntryModes(prev => ({
-      ...prev,
-      [subject]: newMode
-    }))
-  }
-
-  const handleGlobalModeToggle = () => {
-    // Check if all subjects are currently in final mode
-    const allInFinalMode = selectedSubjects.every(subject => 
-      gradeEntryModes[subject] === 'final'
-    )
-    
-    // Toggle all subjects to the opposite mode
-    const newMode = allInFinalMode ? 'terms' : 'final'
-    const newGradeEntryModes = {}
-    
-    selectedSubjects.forEach(subject => {
-      newGradeEntryModes[subject] = newMode
-    })
-    
-    setGradeEntryModes(newGradeEntryModes)
-  }
-
-  const getGlobalModeStatus = () => {
-    if (selectedSubjects.length === 0) return 'mixed'
-    
-    const finalModeCount = selectedSubjects.filter(subject => 
-      gradeEntryModes[subject] === 'final'
-    ).length
-    
-    if (finalModeCount === 0) return 'terms'
-    if (finalModeCount === selectedSubjects.length) return 'final'
-    return 'mixed'
-  }
-
-  const isSemesterSubject = (subject) => SEMESTER_SUBJECTS.has(subject)
-  const isThreeTermSubject = (subject) => THREE_TERM_SUBJECTS.has(subject)
-
-  const getTermsForSubject = (subject) => {
-    const currentTermIndex = TERMS.indexOf(currentTerm)
-    if (currentTermIndex === -1) return TERMS
-
-    // Three-term subjects: only Term 1, 2, 3
-    if (isThreeTermSubject(subject)) {
-      if (currentTerm === 'Term 1') return ['Term 1']
-      if (currentTerm === 'Term 2') return ['Term 1', 'Term 2']
-      if (currentTerm === 'Term 3') return ['Term 1', 'Term 2', 'Term 3']
-      return ['Term 1', 'Term 2', 'Term 3'] // Term 4 still shows Term 1-3
-    }
-
-    // Semester subjects: Term 1-2 OR Term 3-4
-    if (isSemesterSubject(subject)) {
-      if (currentTerm === 'Term 1') return ['Term 1']
-      if (currentTerm === 'Term 2') return ['Term 1', 'Term 2']
-      if (currentTerm === 'Term 3') return ['Term 3']
-      return ['Term 3', 'Term 4']
-    }
-
-    // Full-year subjects: all terms up to current
-    return TERMS.slice(0, currentTermIndex + 1)
-  }
-
-  const canCaptureSemesterFinal = (subject) => {
-    if (isSemesterSubject(subject)) {
-      return FINAL_TERMS.has(currentTerm)
-    }
-    if (isThreeTermSubject(subject)) {
-      return currentTerm === 'Term 3' // Final grade captured at Term 3
-    }
-    return false
-  }
-
-  const handleTermGradeChange = (subject, term, grade) => {
-    setTermGrades(prev => ({
-      ...prev,
-      [subject]: {
-        ...prev[subject],
-        [term]: grade
-      }
-    }))
-  }
-
-  const handleDirectFinalGradeChange = (subject, grade) => {
-    setDirectFinalGrades(prev => ({
-      ...prev,
-      [subject]: grade
-    }))
-  }
-
-  const handleTermFinalGradeChange = (subject, grade) => {
-    setTermFinalGrades(prev => ({
-      ...prev,
-      [subject]: grade
-    }))
-  }
-
-  const calculateSubjectFinalGrade = (subject) => {
-    const mode = gradeEntryModes[subject] || 'terms'
-    
     if (mode === 'final') {
       const directGrade = directFinalGrades[subject]
       if (!directGrade) return null
       return { grade: directGrade, points: GRADES[directGrade] }
-    } else {
-      // Terms mode
-      const overrideGrade = termFinalGrades[subject]
-      if (overrideGrade && GRADES[overrideGrade]) {
-        return { grade: overrideGrade, points: GRADES[overrideGrade] }
-      }
-
-      const subjectTerms = termGrades[subject]
-      const relevantTerms = getTermsForSubject(subject)
-      if (!subjectTerms || relevantTerms.length === 0) return null
-
-      const enteredGrades = relevantTerms
-        .map(term => subjectTerms[term])
-        .filter(grade => grade && grade !== '')
-      if (enteredGrades.length === 0) return null
-
-      // Calculate average of entered term grades
-      const totalPoints = enteredGrades.reduce((sum, grade) => sum + GRADES[grade], 0)
-      const averagePoints = totalPoints / enteredGrades.length
-
-      // Find the closest grade to the average
-      const closestGrade = getClosestGradeForPoints(averagePoints)
-
-      return { grade: closestGrade, points: averagePoints }
     }
+
+    const overrideGrade = termFinalGrades[subject]
+    if (overrideGrade && GRADES[overrideGrade]) {
+      return { grade: overrideGrade, points: GRADES[overrideGrade] }
+    }
+
+    const subjectTerms = termGrades[subject]
+    if (!subjectTerms) return null
+
+    const enteredGrades = TERMS
+      .map(term => subjectTerms[term])
+      .filter(grade => grade && GRADES[grade])
+    if (enteredGrades.length === 0) return null
+
+    const totalPoints = enteredGrades.reduce((sum, grade) => sum + GRADES[grade], 0)
+    const averagePoints = totalPoints / enteredGrades.length
+    return { grade: getClosestGradeForPoints(averagePoints), points: averagePoints }
   }
 
-  const calculateGPA = () => {
+  function calculateGPA() {
     let totalWeightedScore = 0
     let totalKnownWeight = 0
 
     selectedSubjects.forEach(subject => {
       const weight = SUBJECTS[subject]
       const finalGrade = finalGrades[subject]
-      
-      if (finalGrade && finalGrade.points) {
+
+      if (weight && finalGrade?.points) {
         totalWeightedScore += finalGrade.points * weight
         totalKnownWeight += weight
       }
@@ -472,25 +288,20 @@ function App() {
     return totalKnownWeight > 0 ? totalWeightedScore / totalKnownWeight : 0
   }
 
-  const calculateYearlyGPA = () => {
-    // Calculate yearly GPA using the same logic as current GPA
-    // This represents the final yearly GPA based on final calculated grades
-    return calculateGPA()
-  }
-
-  const calculateRequiredGrades = (targetGPA) => {
+  function calculateRequiredGrades(target) {
     let currentWeightedScore = 0
     let remainingWeight = 0
+    let knownWeight = 0
     const missingSubjects = []
-    let totalKnownWeight = 0
+    const totalSelectedWeight = selectedSubjects.reduce((sum, subject) => sum + SUBJECTS[subject], 0)
 
     selectedSubjects.forEach(subject => {
       const weight = SUBJECTS[subject]
       const finalGrade = finalGrades[subject]
-      
-      if (finalGrade && finalGrade.points) {
+
+      if (finalGrade?.points) {
         currentWeightedScore += finalGrade.points * weight
-        totalKnownWeight += weight
+        knownWeight += weight
       } else {
         remainingWeight += weight
         missingSubjects.push(subject)
@@ -498,507 +309,47 @@ function App() {
     })
 
     if (missingSubjects.length === 0) {
-      const currentGPA = totalKnownWeight > 0 ? currentWeightedScore / totalKnownWeight : 0;
-      return { possible: currentGPA >= targetGPA, grades: {} };
+      const currentGPA = knownWeight > 0 ? currentWeightedScore / knownWeight : 0
+      return {
+        possible: currentGPA >= target,
+        grades: {},
+        message: currentGPA >= target
+          ? `Current GPA ${currentGPA.toFixed(2)} meets ${formatGpa(target)}.`
+          : `All grades are entered. Current GPA ${currentGPA.toFixed(2)} is below ${formatGpa(target)}.`
+      }
     }
 
-    const totalSelectedWeight = selectedSubjects.reduce((sum, subject) => sum + SUBJECTS[subject], 0)
-    const targetTotalScore = targetGPA * totalSelectedWeight
-    const requiredScoreFromMissing = targetTotalScore - currentWeightedScore;
-    const averageRequiredGrade = requiredScoreFromMissing / remainingWeight;
-    
-    if (averageRequiredGrade > 15) {
-      return { possible: false, grades: {} }
+    const targetTotalScore = target * totalSelectedWeight
+    const requiredScoreFromMissing = targetTotalScore - currentWeightedScore
+    const averageRequiredPoints = requiredScoreFromMissing / remainingWeight
+
+    if (averageRequiredPoints > MAX_GPA_VALUE) {
+      return {
+        possible: false,
+        grades: {},
+        message: `A ${formatGpa(target)} target is not reachable with the remaining subjects.`
+      }
     }
 
-    const requiredGrades = {}
-    missingSubjects.forEach(subject => {
-      const requiredGradeValue = Math.max(1, Math.min(15, averageRequiredGrade))
-      
-      let closestGrade = 'F-'
-      let closestDiff = Math.abs(GRADES['F-'] - requiredGradeValue)
-      
-      Object.entries(GRADES).forEach(([grade, value]) => {
-        const diff = Math.abs(value - requiredGradeValue)
-        if (diff < closestDiff) {
-          closestGrade = grade
-          closestDiff = diff
-        }
-      })
-      
-      requiredGrades[subject] = closestGrade
-    })
-
-    return { possible: true, grades: requiredGrades }
-  }
-
-  const calculateProjectedGPA = (overrides = {}) => {
-    let totalWeightedScore = 0
-    let totalWeight = 0
-
-    selectedSubjects.forEach(subject => {
-      const weight = SUBJECTS[subject]
-      const finalGrade = finalGrades[subject]
-      const allTermsForSubject = getAllTermsForSubject(subject)
-      const finalOverrideGrade = overrides[subject]?.__final
-
-      if (finalOverrideGrade) {
-        totalWeightedScore += GRADES[finalOverrideGrade] * weight
-        totalWeight += weight
-        return
+    const requiredGrade = getCeilingGradeForPoints(averageRequiredPoints)
+    if (!requiredGrade) {
+      return {
+        possible: false,
+        grades: {},
+        message: 'There is not enough remaining weight to calculate a fair grade target.'
       }
-
-      if (finalGrade && finalGrade.points) {
-        totalWeightedScore += finalGrade.points * weight
-        totalWeight += weight
-        return
-      }
-
-      let collectedPoints = 0
-      let consideredTerms = 0
-      const currentTermIndex = TERMS.indexOf(currentTerm)
-
-      allTermsForSubject.forEach(term => {
-        const overrideGrade = overrides[subject]?.[term]
-        if (overrideGrade) {
-          collectedPoints += GRADES[overrideGrade]
-          consideredTerms += 1
-          return
-        }
-
-        const recordedGrade = termGrades[subject]?.[term]
-        if (recordedGrade) {
-          collectedPoints += GRADES[recordedGrade]
-          consideredTerms += 1
-          return
-        }
-
-        const termIndex = TERMS.indexOf(term)
-        if (termIndex > currentTermIndex) {
-          const expectedGrade = expectedGrades[subject]?.[term]
-          if (expectedGrade) {
-            collectedPoints += GRADES[expectedGrade]
-            consideredTerms += 1
-          }
-        }
-      })
-
-      if (consideredTerms > 0) {
-        const avgPoints = collectedPoints / consideredTerms
-        totalWeightedScore += avgPoints * weight
-        totalWeight += weight
-      }
-    })
-
-    return totalWeight > 0 ? totalWeightedScore / totalWeight : 0
-  }
-
-  const suggestImprovements = (targetGPA) => {
-    const currentGPA = gpa || calculateGPA()
-    if (currentGPA >= targetGPA) {
-      return { possible: true, suggestions: [] }
     }
-
-    // Find subjects that could be improved
-    const suggestions = []
-    const subjectsWithGrades = selectedSubjects.filter(subject => finalGrades[subject])
-
-    subjectsWithGrades.forEach(subject => {
-      const weight = SUBJECTS[subject]
-      const currentGrade = finalGrades[subject]
-      
-      // Try each higher grade and see impact
-      const gradeOptions = Object.keys(GRADES).reverse() // Start from highest
-      
-      for (let grade of gradeOptions) {
-        if (GRADES[grade] > currentGrade.points) {
-          // Calculate GPA if this subject was improved
-          let newTotalWeightedScore = 0
-          let newTotalWeight = 0
-
-          selectedSubjects.forEach(s => {
-            const w = SUBJECTS[s]
-            const fg = s === subject ? { points: GRADES[grade] } : finalGrades[s]
-            
-            if (fg && fg.points) {
-              newTotalWeightedScore += fg.points * w
-              newTotalWeight += w
-            }
-          })
-
-          const newGPA = newTotalWeight > 0 ? newTotalWeightedScore / newTotalWeight : 0
-          
-          if (newGPA >= targetGPA) {
-            suggestions.push({
-              subject,
-              from: currentGrade.grade,
-              to: grade,
-              impact: (newGPA - currentGPA).toFixed(2)
-            })
-            break // Found the minimum improvement needed for this subject
-          }
-        }
-      }
-    })
-
-    // Sort by impact (highest impact first)
-    suggestions.sort((a, b) => parseFloat(b.impact) - parseFloat(a.impact))
 
     return {
-      possible: suggestions.length > 0,
-      suggestions: suggestions.slice(0, 3) // Return top 3 suggestions
+      possible: true,
+      grades: Object.fromEntries(missingSubjects.map(subject => [subject, requiredGrade])),
+      message: averageRequiredPoints <= 1
+        ? `Any passing entered grade keeps ${formatGpa(target)} in reach.`
+        : `Aim for about ${requiredGrade} or higher across the remaining subjects. Higher grades can offset lower ones.`
     }
   }
 
-  const getFutureImprovementSuggestions = (projectedGPA) => {
-    if (!projectedGPA || projectedGPA <= 0) {
-      return { possible: false, reason: 'no-projection', suggestions: [] }
-    }
-
-    const suggestions = []
-    const currentTermIndex = TERMS.indexOf(currentTerm)
-
-    selectedSubjects.forEach(subject => {
-      const finalGrade = finalGrades[subject]
-      if (finalGrade?.grade) {
-        const gradeIndex = GRADE_OPTIONS.indexOf(finalGrade.grade)
-        if (gradeIndex > 0) {
-          const higherGrade = GRADE_OPTIONS[gradeIndex - 1]
-          const improvedGPA = calculateProjectedGPA({
-            [subject]: {
-              __final: higherGrade
-            }
-          })
-          const impact = improvedGPA - projectedGPA
-
-          if (impact > 0.005) {
-            suggestions.push({
-              subject,
-              term: 'Final grade',
-              from: finalGrade.grade,
-              to: higherGrade,
-              impact: impact.toFixed(2)
-            })
-          }
-        }
-        return
-      }
-
-      const subjectExpectedGrades = expectedGrades[subject]
-      if (!subjectExpectedGrades) {
-        return
-      }
-
-      Object.entries(subjectExpectedGrades).forEach(([term, grade]) => {
-        if (!grade) {
-          return
-        }
-
-        const termIndex = TERMS.indexOf(term)
-        const recordedGrade = termGrades[subject]?.[term]
-        if (termIndex <= currentTermIndex && recordedGrade) {
-          return
-        }
-
-        const gradeIndex = GRADE_OPTIONS.indexOf(grade)
-        if (gradeIndex <= 0) {
-          return
-        }
-
-        const higherGrade = GRADE_OPTIONS[gradeIndex - 1]
-        const improvedGPA = calculateProjectedGPA({
-          [subject]: {
-            [term]: higherGrade
-          }
-        })
-        const impact = improvedGPA - projectedGPA
-
-        if (impact > 0.005) {
-          suggestions.push({
-            subject,
-            term,
-            from: grade,
-            to: higherGrade,
-            impact: impact.toFixed(2)
-          })
-        }
-      })
-    })
-
-    suggestions.sort((a, b) => parseFloat(b.impact) - parseFloat(a.impact))
-
-    return {
-      possible: suggestions.length > 0,
-      reason: suggestions.length > 0
-        ? 'suggestions'
-        : hasPendingFutureTerms
-        ? 'needs-expected-grades'
-        : 'maxed-or-locked',
-      suggestions: suggestions.slice(0, 3)
-    }
-  }
-
-  const handleExpectedGradeChange = (subject, term, grade) => {
-    setExpectedGrades(prev => ({
-      ...prev,
-      [subject]: {
-        ...(prev[subject] || {}),
-        [term]: grade
-      }
-    }))
-  }
-
-  const handleCurrentTermChange = (term) => {
-    setCurrentTerm(term)
-    setTermSelectionMode(term === detectedTerm ? 'auto' : 'manual')
-  }
-
-  const handleUseDetectedTerm = () => {
-    setCurrentTerm(detectedTerm)
-    setTermSelectionMode('auto')
-  }
-
-  const handleThemeChange = (key, value) => {
-    setTheme(prev => ({
-      ...prev,
-      [key]: value
-    }))
-  }
-
-  const applyThemePreset = (presetName) => {
-    setTheme(THEME_PRESETS[presetName] || DEFAULT_THEME)
-  }
-
-  const persistLocalGpaSnapshot = (payload) => {
-    try {
-      const existingRecords = JSON.parse(localStorage.getItem(LOCAL_GPA_SAVES_KEY) || '[]')
-      localStorage.setItem(LOCAL_GPA_SAVES_KEY, JSON.stringify([payload, ...existingRecords].slice(0, 25)))
-      return true
-    } catch (error) {
-      console.error('Failed to save local GPA snapshot:', error)
-      return false
-    }
-  }
-
-  const saveToGoogleDoc = async () => {
-    if (!studentName.trim()) {
-      alert('Please enter your name before saving!')
-      return
-    }
-
-    // Check for inappropriate name
-    if (isInappropriateName(studentName)) {
-      alert('The name you entered appears to be inappropriate or invalid. Please use your real name.')
-      return
-    }
-
-    if (!GOOGLE_APPS_SCRIPT_URL) {
-      alert('Google Apps Script URL is not configured. Please set VITE_GOOGLE_APPS_SCRIPT_URL in your environment.')
-      return
-    }
-
-    setIsSaving(true)
-    
-    // Open the Google Doc first, before the async operation
-    // This ensures it's triggered by user action and won't be blocked by popup blockers
-    const docUrl = `https://docs.google.com/document/d/${GOOGLE_DOC_ID}/edit`
-    const docWindow = window.open(docUrl, '_blank', 'noopener,noreferrer')
-    
-    try {
-      const subjectSummaries = selectedSubjects.map(subject => ({
-        subject,
-        weight: SUBJECTS[subject],
-        entryMode: gradeEntryModes[subject] || 'terms',
-        finalGrade: finalGrades[subject]?.grade ?? null,
-        finalPoints: finalGrades[subject]?.points ?? null,
-        termGrades: termGrades[subject] ?? {},
-        directFinalGrade: directFinalGrades[subject] ?? null,
-        semesterFinalGrade: termFinalGrades[subject] ?? null
-      }))
-
-      const payload = {
-        studentName: studentName.trim(),
-        yearLevel: studentYearLevel,
-        currentTerm,
-        detectedTerm,
-        termSelectionMode,
-        gpa: gpa !== null ? Number(gpa.toFixed(2)) : null,
-        yearlyGpa: yearlyGPA !== null ? Number(yearlyGPA.toFixed(2)) : null,
-        completedSubjects: enteredFinalGradeCount,
-        totalSubjects: selectedSubjects.length,
-        subjects: subjectSummaries,
-        timestamp: new Date().toISOString(),
-        googleDocId: GOOGLE_DOC_ID
-      }
-
-      const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          data: JSON.stringify(payload)
-        })
-      })
-
-      // Try to read the response
-      let responseData
-      try {
-        responseData = await response.json()
-      } catch (e) {
-        // If JSON parsing fails, assume success (for no-cors compatibility)
-        responseData = { success: true }
-      }
-
-      if (responseData.success !== false) {
-        alert(`Successfully saved ${studentName}'s GPA (${gpa?.toFixed(2)}) to Google Doc!`)
-        
-        // Check if popup was blocked
-        if (!docWindow || docWindow.closed || typeof docWindow.closed === 'undefined') {
-          // Popup was blocked, provide a fallback
-          const openNow = confirm('The Google Doc popup was blocked. Click OK to open it now.')
-          if (openNow) {
-            window.open(docUrl, '_blank', 'noopener,noreferrer')
-          }
-        }
-        
-        setShowSaveDialog(false)
-        setStudentName('')
-        setSaveAttempts(0)
-      } else {
-        throw new Error(responseData.message || 'Failed to save to Google Doc')
-      }
-    } catch (error) {
-      console.error('Failed to save GPA to Google Doc:', error)
-      const errorMessage = error.message || 'Unknown error occurred'
-      
-      // Show specific error message from server
-      if (errorMessage.includes('inappropriate') || errorMessage.includes('invalid')) {
-        alert(errorMessage)
-      } else {
-        alert(`Failed to save to Google Doc.\n\n${errorMessage}`)
-      }
-      
-      // Close the doc window if save failed
-      if (docWindow && !docWindow.closed) {
-        docWindow.close()
-      }
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const saveSnapshotToGoogleDoc = async () => {
-    if (!studentName.trim()) {
-      setSaveErrorMessage('Enter your name before saving.')
-      return
-    }
-
-    if (isInappropriateName(studentName)) {
-      setSaveErrorMessage('That name looks invalid. Please use your real name.')
-      return
-    }
-
-    if (!GOOGLE_APPS_SCRIPT_URL) {
-      setSaveErrorMessage('Google Docs is not connected yet. Add the Apps Script web app URL first.')
-      return
-    }
-
-    setIsSaving(true)
-    setSaveStatusMessage('')
-    setSaveErrorMessage('')
-
-    try {
-      const subjectSummaries = selectedSubjects.map(subject => ({
-        subject,
-        weight: SUBJECTS[subject],
-        entryMode: gradeEntryModes[subject] || 'terms',
-        finalGrade: finalGrades[subject]?.grade ?? null,
-        finalPoints: finalGrades[subject]?.points ?? null,
-        termGrades: termGrades[subject] ?? {},
-        directFinalGrade: directFinalGrades[subject] ?? null,
-        semesterFinalGrade: termFinalGrades[subject] ?? null
-      }))
-
-      const payload = {
-        studentName: studentName.trim(),
-        yearLevel: studentYearLevel,
-        currentTerm,
-        detectedTerm,
-        termSelectionMode,
-        gpa: gpa !== null ? Number(gpa.toFixed(2)) : null,
-        yearlyGpa: yearlyGPA !== null ? Number(yearlyGPA.toFixed(2)) : null,
-        completedSubjects: enteredFinalGradeCount,
-        totalSubjects: selectedSubjects.length,
-        subjects: subjectSummaries,
-        timestamp: new Date().toISOString(),
-        googleDocId: GOOGLE_DOC_ID
-      }
-
-      const savedLocally = persistLocalGpaSnapshot(payload)
-
-      const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          data: JSON.stringify(payload)
-        })
-      })
-
-      const cannotVerifyAppsScriptPost = response.type === 'opaque'
-      setSaveStatusMessage(
-        cannotVerifyAppsScriptPost
-          ? `Saved locally${savedLocally ? '' : ' could not be confirmed'} and sent a Google Docs request for ${studentName.trim()}.`
-          : `Saved ${studentName.trim()}'s ${studentYearLevel} ${currentTerm} GPA locally and to Google Docs.`
-      )
-      setShowSaveDialog(false)
-      setStudentName('')
-      setSaveAttempts(0)
-    } catch (error) {
-      console.error('Failed to save GPA to Google Doc:', error)
-      const errorMessage = error.message || 'Unknown error occurred'
-
-      if (errorMessage.includes('inappropriate') || errorMessage.includes('invalid')) {
-        setSaveErrorMessage(errorMessage)
-      } else {
-        setSaveErrorMessage(`Could not reach Google Docs. ${errorMessage}`)
-      }
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const handleSaveDialogOpenChange = (open) => {
-    if (open) {
-      setSaveErrorMessage('')
-      setShowSaveDialog(true)
-      return
-    }
-
-    setSaveAttempts(prev => prev + 1)
-    setShowSaveDialog(false)
-    setUserDismissedDialog(true)
-  }
-
-  const handleSaveDialogClose = () => handleSaveDialogOpenChange(false)
-
-  const getPassiveAggressiveMessage = () => {
-    switch (saveAttempts) {
-      case 0:
-        return "Save your GPA to Google Doc so you can keep a record of your progress."
-      case 1:
-        return "Want to save this now? It can help when you compare progress later."
-      case 2:
-        return "No pressure - saving now just makes it easier to come back to these results."
-      case 3:
-        return "You can keep going without saving, or save a copy to your Google Doc."
-      default:
-        return "All good. You can still save later anytime."
-    }
-  }
+  const calculateYearlyGPA = () => calculateGPA()
 
   useEffect(() => {
     try {
@@ -1009,73 +360,33 @@ function App() {
       }
 
       const parsed = JSON.parse(raw)
-      const persistedSubjects = sanitizePersistedSubjects(parsed?.selectedSubjects)
-      const safeSelectedSubjects = persistedSubjects.length > 0 ? persistedSubjects : [...CORE_SUBJECTS]
-
-      const safeCurrentStep = parsed?.currentStep === 'gradeEntry' ? 'gradeEntry' : 'selection'
-      const safeCalculationMode = parsed?.calculationMode === 'future' ? 'future' : 'current'
-      const safeShowElectiveChooser = safeSelectedSubjects.some(subject => !CORE_SUBJECTS.includes(subject))
-        ? false
-        : typeof parsed?.showElectiveChooser === 'boolean'
-        ? parsed.showElectiveChooser
-        : true
-
-      const persistedGradeModes = typeof parsed?.gradeEntryModes === 'object' && parsed.gradeEntryModes !== null
-        ? parsed.gradeEntryModes
-        : {}
-      const hydratedGradeModes = safeSelectedSubjects.reduce((acc, subject) => {
-        acc[subject] = persistedGradeModes[subject] === 'final' ? 'final' : 'terms'
+      const hydratedSubjects = sanitizePersistedSubjects(parsed?.selectedSubjects)
+      const hydratedModes = hydratedSubjects.reduce((acc, subject) => {
+        acc[subject] = parsed?.gradeEntryModes?.[subject] === 'terms' ? 'terms' : 'final'
         return acc
       }, {})
+      const safeStep = ['selection', 'target', 'gradeEntry', 'results'].includes(parsed?.currentStep)
+        ? parsed.currentStep
+        : 'selection'
 
-      if (safeSelectedSubjects.length > 0) {
-        setSelectedSubjects(safeSelectedSubjects)
-      }
-      setCurrentStep(safeCurrentStep)
-      const safeTermSelectionMode = parsed?.termSelectionMode === 'manual' ? 'manual' : 'auto'
-      const safeCurrentTerm = safeTermSelectionMode === 'manual' && TERMS.includes(parsed?.currentTerm)
-        ? parsed.currentTerm
-        : getDetectedTerm()
-      setTermSelectionMode(safeTermSelectionMode)
-      setCurrentTerm(safeCurrentTerm)
-      setCalculationMode(safeCalculationMode)
-      setGradeEntryModes(hydratedGradeModes)
-      setShowElectiveChooser(safeShowElectiveChooser)
-
-      if (typeof parsed?.termGrades === 'object' && parsed.termGrades !== null) {
-        setTermGrades(parsed.termGrades)
-      }
-      if (typeof parsed?.directFinalGrades === 'object' && parsed.directFinalGrades !== null) {
-        setDirectFinalGrades(parsed.directFinalGrades)
-      }
-      if (typeof parsed?.termFinalGrades === 'object' && parsed.termFinalGrades !== null) {
-        setTermFinalGrades(parsed.termFinalGrades)
-      }
-      if (typeof parsed?.expectedGrades === 'object' && parsed.expectedGrades !== null) {
-        setExpectedGrades(parsed.expectedGrades)
-      }
-
-      if (Array.isArray(parsed?.targetGPAs)) {
-        const safeTargetGPAs = [...new Set(parsed.targetGPAs)]
-          .map(value => Number(value))
-          .filter(value => Number.isFinite(value) && value >= MIN_GPA_VALUE && value <= MAX_GPA_VALUE)
-          .sort((a, b) => a - b)
-        if (safeTargetGPAs.length > 0) {
-          setTargetGPAs(safeTargetGPAs)
-        }
-      }
-      if (typeof parsed?.studentYearLevel === 'string' && parsed.studentYearLevel.trim()) {
-        setStudentYearLevel(parsed.studentYearLevel)
-      }
-
-      const persistedActiveSubject = parsed?.activeSubject
-      if (persistedActiveSubject && safeSelectedSubjects.includes(persistedActiveSubject)) {
-        setActiveSubject(persistedActiveSubject)
-      } else {
-        setActiveSubject(safeSelectedSubjects[0] || null)
-      }
+      setSelectedSubjects(hydratedSubjects)
+      setGradeEntryModes(hydratedModes)
+      setDirectFinalGrades(typeof parsed?.directFinalGrades === 'object' && parsed.directFinalGrades ? parsed.directFinalGrades : {})
+      setTermGrades(typeof parsed?.termGrades === 'object' && parsed.termGrades ? parsed.termGrades : {})
+      setTermFinalGrades(typeof parsed?.termFinalGrades === 'object' && parsed.termFinalGrades ? parsed.termFinalGrades : {})
+      setExpectedGrades(typeof parsed?.expectedGrades === 'object' && parsed.expectedGrades ? parsed.expectedGrades : {})
+      setCurrentStep(safeStep)
+      setTargetGPA(getOptionalTargetFromPersisted(parsed))
+      setStudentYearLevel(typeof parsed?.studentYearLevel === 'string' ? parsed.studentYearLevel : '')
+      setCurrentTerm(TERMS.includes(parsed?.currentTerm) ? parsed.currentTerm : getDetectedTerm())
+      setTermSelectionMode(parsed?.termSelectionMode === 'manual' ? 'manual' : 'auto')
+      setActiveSubjectIndex(
+        Number.isInteger(parsed?.activeSubjectIndex)
+          ? Math.max(0, Math.min(parsed.activeSubjectIndex, hydratedSubjects.length - 1))
+          : 0
+      )
     } catch (error) {
-        console.error('Failed to restore calculator state. Starting with default settings.', error)
+      console.error('Failed to restore calculator state. Starting with default settings.', error)
       setPersistenceWarning(true)
     } finally {
       setHasHydratedState(true)
@@ -1083,28 +394,15 @@ function App() {
   }, [])
 
   useEffect(() => {
-    const syncDetectedTerm = () => {
-      if (termSelectionMode === 'auto') {
-        setCurrentTerm(getDetectedTerm())
-      }
-    }
-    syncDetectedTerm()
-    const intervalId = window.setInterval(syncDetectedTerm, 60 * 60 * 1000)
-    return () => window.clearInterval(intervalId)
-  }, [termSelectionMode])
-
-  useEffect(() => {
     try {
-      localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(theme))
+      window.localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(theme))
     } catch (error) {
       console.error('Failed to save theme:', error)
     }
   }, [theme])
 
   useEffect(() => {
-    if (!hasHydratedState) {
-      return
-    }
+    if (!hasHydratedState) return
 
     const stateToPersist = {
       currentStep,
@@ -1115,12 +413,10 @@ function App() {
       directFinalGrades,
       termFinalGrades,
       expectedGrades,
-      calculationMode,
-      targetGPAs,
-      activeSubject,
+      targetGPA,
+      activeSubjectIndex,
       termSelectionMode,
-      studentYearLevel,
-      showElectiveChooser
+      studentYearLevel
     }
 
     try {
@@ -1139,15 +435,12 @@ function App() {
     directFinalGrades,
     termFinalGrades,
     expectedGrades,
-    calculationMode,
-    targetGPAs,
-    activeSubject,
+    targetGPA,
+    activeSubjectIndex,
     termSelectionMode,
-    studentYearLevel,
-    showElectiveChooser
+    studentYearLevel
   ])
 
-  // Update final grades when term grades or direct final grades change
   useEffect(() => {
     const newFinalGrades = {}
     selectedSubjects.forEach(subject => {
@@ -1157,9 +450,8 @@ function App() {
       }
     })
     setFinalGrades(newFinalGrades)
-  }, [termGrades, directFinalGrades, gradeEntryModes, selectedSubjects, termFinalGrades, currentTerm])
+  }, [termGrades, directFinalGrades, gradeEntryModes, selectedSubjects, termFinalGrades])
 
-  // Update GPA when final grades change
   useEffect(() => {
     if (selectedSubjects.length > 0) {
       const currentGPA = calculateGPA()
@@ -1169,1294 +461,511 @@ function App() {
   }, [finalGrades, selectedSubjects])
 
   useEffect(() => {
-    if (selectedSubjects.length === 0) {
-      setActiveSubject(null)
+    if (activeSubjectIndex > selectedSubjects.length - 1) {
+      setActiveSubjectIndex(Math.max(0, selectedSubjects.length - 1))
+    }
+  }, [activeSubjectIndex, selectedSubjects.length])
+
+  const handleElectiveToggle = (subject) => {
+    const isSelected = selectedSubjects.includes(subject)
+
+    if (isSelected) {
+      const updatedSubjects = selectedSubjects.filter(item => item !== subject)
+      setSelectedSubjects(updatedSubjects)
+      setDirectFinalGrades(removeSubjectKey(directFinalGrades, subject))
+      setTermGrades(removeSubjectKey(termGrades, subject))
+      setTermFinalGrades(removeSubjectKey(termFinalGrades, subject))
+      setExpectedGrades(removeSubjectKey(expectedGrades, subject))
+      setGradeEntryModes(removeSubjectKey(gradeEntryModes, subject))
+      setIsTargetTransitioning(false)
+      if (currentStep !== 'selection') setCurrentStep('selection')
       return
     }
 
-    if (!activeSubject || !selectedSubjects.includes(activeSubject)) {
-      setActiveSubject(selectedSubjects[0])
-    }
-  }, [selectedSubjects, activeSubject])
+    if (selectedElectiveCount >= MAX_ELECTIVES) return
 
-  const proceedToGradeEntry = () => {
-    if (selectedSubjects.length > 0) {
-      setShowTargetGPADialog(false)
-      setActiveSubject(selectedSubjects[0])
-      setCurrentStep('gradeEntry')
+    const updatedSubjects = [...selectedSubjects, subject]
+    const updatedElectiveCount = updatedSubjects.filter(item => !CORE_SUBJECTS.includes(item)).length
+    setSelectedSubjects(updatedSubjects)
+    setGradeEntryModes(prev => ({ ...prev, [subject]: 'final' }))
+
+    if (updatedElectiveCount === MAX_ELECTIVES) {
+      setIsTargetTransitioning(true)
+      window.setTimeout(() => {
+        setTargetInput(targetGPA ? String(targetGPA) : '')
+        setIsTargetTransitioning(false)
+        setCurrentStep('target')
+      }, 280)
     }
   }
 
-  const handleTargetGPASubmit = () => {
-    const gpaValue = parseFloat(initialTargetGPA)
-    
-    if (initialTargetGPA && gpaValue && gpaValue >= MIN_GPA_VALUE && gpaValue <= MAX_GPA_VALUE) {
-      // Check if already exists (with some tolerance for floating point)
-      const exists = targetGPAs.some(target => Math.abs(target - gpaValue) < 0.01)
-      if (!exists) {
-        setTargetGPAs([...targetGPAs, gpaValue].sort((a, b) => a - b))
-      }
-    }
-    
-    setShowTargetGPADialog(false)
-    setCurrentStep('gradeEntry')
-    setInitialTargetGPA('')
+  const removeSubjectKey = (source, subject) => {
+    const copy = { ...source }
+    delete copy[subject]
+    return copy
   }
 
-  const handleSkipTargetGPA = () => {
-    setShowTargetGPADialog(false)
+  const saveTargetAndContinue = () => {
+    const value = Number(targetInput)
+    if (targetInput.trim() && Number.isFinite(value) && value >= MIN_GPA_VALUE && value <= MAX_GPA_VALUE) {
+      setTargetGPA(value)
+    } else {
+      setTargetGPA(null)
+    }
+    setActiveSubjectIndex(0)
     setCurrentStep('gradeEntry')
-    setInitialTargetGPA('')
+  }
+
+  const skipTargetAndContinue = () => {
+    setTargetGPA(null)
+    setTargetInput('')
+    setActiveSubjectIndex(0)
+    setCurrentStep('gradeEntry')
+  }
+
+  const handleGradeSelect = (subject, grade) => {
+    setGradeEntryModes(prev => ({ ...prev, [subject]: 'final' }))
+    setDirectFinalGrades(prev => ({ ...prev, [subject]: grade }))
+  }
+
+  const handleNextSubject = () => {
+    if (activeSubjectIndex < selectedSubjects.length - 1) {
+      setActiveSubjectIndex(activeSubjectIndex + 1)
+      return
+    }
+
+    setCurrentStep('results')
+  }
+
+  const applyThemePreset = (presetName) => {
+    setTheme(THEME_PRESETS[presetName] || DEFAULT_THEME)
+  }
+
+  const handleThemeChange = (key, value) => {
+    setTheme(prev => ({ ...prev, [key]: value }))
+  }
+
+  const handleSettingsTargetSave = () => {
+    const value = Number(settingsTargetInput)
+    if (settingsTargetInput.trim() && Number.isFinite(value) && value >= MIN_GPA_VALUE && value <= MAX_GPA_VALUE) {
+      setTargetGPA(value)
+      setSettingsTargetInput('')
+    }
   }
 
   const resetCalculator = () => {
     setCurrentStep('selection')
     setSelectedSubjects([...CORE_SUBJECTS])
-    setCurrentTerm(getDetectedTerm())
-    setTermSelectionMode('auto')
-    setShowElectiveChooser(true)
+    setActiveSubjectIndex(0)
     setGradeEntryModes(createDefaultGradeModes())
     setTermGrades({})
     setDirectFinalGrades({})
     setTermFinalGrades({})
+    setExpectedGrades({})
     setFinalGrades({})
     setGpa(null)
     setYearlyGPA(null)
-    setSaveAttempts(0)
-    setExpectedGrades({})
-    setCalculationMode('current')
-    setActiveSubject(CORE_SUBJECTS[0] || null)
+    setTargetGPA(null)
+    setTargetInput('')
+    setSaveStatusMessage('')
+    setSaveErrorMessage('')
+    setCurrentTerm(getDetectedTerm())
+    setTermSelectionMode('auto')
   }
 
-  const getSubjectTermsCompleted = (subject) => {
-    const subjectTerms = termGrades[subject] || {}
-    const relevantTerms = getTermsForSubject(subject)
-    if (relevantTerms.length === 0) return 0
-    return relevantTerms.filter(term => subjectTerms[term] && subjectTerms[term] !== '').length
-  }
-
-  const getGradeEntryModeLabel = (subject) => {
-    const mode = gradeEntryModes[subject] || 'terms'
-    return mode === 'terms' ? 'Term Grades' : 'Final Grade (D2L)'
-  }
-
-  const getAllTermsForSubject = (subject) => {
-    if (isThreeTermSubject(subject)) {
-      return ['Term 1', 'Term 2', 'Term 3']
-    }
-    if (isSemesterSubject(subject)) {
-      const recordedTerms = Object.keys(termGrades[subject] || {})
-      const hasFirstSemesterData = recordedTerms.some(term => term === 'Term 1' || term === 'Term 2')
-      const hasSecondSemesterData = recordedTerms.some(term => term === 'Term 3' || term === 'Term 4')
-      if (hasSecondSemesterData) {
-        return ['Term 3', 'Term 4']
-      }
-      if (hasFirstSemesterData) {
-        return ['Term 1', 'Term 2']
-      }
-      const currentTermIndex = TERMS.indexOf(currentTerm)
-      if (currentTermIndex >= 2) {
-        return ['Term 3', 'Term 4']
-      }
-      return ['Term 1', 'Term 2']
-    }
-    return TERMS
-  }
-
-  const getFutureTermsForSubject = (subject) => {
-    if (finalGrades[subject]) {
-      return []
-    }
-
-    const subjectTerms = getAllTermsForSubject(subject)
-    const currentTermIndex = TERMS.indexOf(currentTerm)
-
-    return subjectTerms.filter(term => {
-      // Ignore terms we already have recorded grades for
-      if (termGrades[subject]?.[term]) {
-        return false
-      }
-
-      const termIndex = TERMS.indexOf(term)
-
-      // Always include terms after the current term
-      if (termIndex > currentTermIndex) {
-        return true
-      }
-
-      // When the current term is Term 4 (end of year), only allow predictions for Term 4 itself
-      if (currentTerm === 'Term 4') {
-        return term === 'Term 4'
-      }
-
-      // Include the current term if we do not yet have a grade saved
-      if (termIndex === currentTermIndex) {
-        return true
-      }
-
-      // Allow earlier terms without recorded grades so students can plan or backfill expectations
+  const persistLocalGpaSnapshot = (payload) => {
+    try {
+      const existingRecords = JSON.parse(localStorage.getItem(LOCAL_GPA_SAVES_KEY) || '[]')
+      localStorage.setItem(LOCAL_GPA_SAVES_KEY, JSON.stringify([payload, ...existingRecords].slice(0, 25)))
       return true
-    })
-  }
-
-  const hasAnyExpectedFutureGrades = selectedSubjects.some(subject => {
-    if (finalGrades[subject]) {
+    } catch (error) {
+      console.error('Failed to save local GPA snapshot:', error)
       return false
     }
-    return getFutureTermsForSubject(subject).some(term => expectedGrades[subject]?.[term])
-  })
-
-  const hasCompleteExpectedFutureGrades = selectedSubjects.every(subject => {
-    if (finalGrades[subject]) {
-      return true
-    }
-    const futureTerms = getFutureTermsForSubject(subject)
-    if (futureTerms.length === 0) {
-      return true
-    }
-    return futureTerms.every(term => expectedGrades[subject]?.[term])
-  })
-
-  const hasPendingFutureTerms = selectedSubjects.some(subject => {
-    if (finalGrades[subject]) {
-      return false
-    }
-    return getFutureTermsForSubject(subject).length > 0
-  })
-
-  const renderSubjectPanel = () => {
-    if (!activeSubject) {
-      return (
-        <div className="liquid-glass-subject-placeholder">
-          <p>Select a subject from the list to start entering grades.</p>
-        </div>
-      )
-    }
-
-    const subject = activeSubject
-    const mode = gradeEntryModes[subject] || 'terms'
-    const termsForSubject = getTermsForSubject(subject)
-    const termsCompleted = getSubjectTermsCompleted(subject)
-    const totalTermsRequired = termsForSubject.length || 1
-    const progressWidth = totalTermsRequired === 0 ? 0 : (termsCompleted / totalTermsRequired) * 100
-    const showSemesterFinal = canCaptureSemesterFinal(subject)
-    const subjectFinalGrade = finalGrades[subject]
-  const futureTerms = getFutureTermsForSubject(subject)
-
-    return (
-      <div className="liquid-glass-subject-details">
-        <div className="liquid-glass-subject-header">
-          <h3 className="liquid-glass-subject-title">{subject}</h3>
-          <div className="liquid-glass-subject-info">
-            <span className="liquid-glass-weight-badge">Weight: {SUBJECTS[subject]}</span>
-            {subjectFinalGrade && (
-              <span className="liquid-glass-final-grade-badge">
-                Final: {subjectFinalGrade.grade} ({subjectFinalGrade.points.toFixed(1)} pts)
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="liquid-glass-mode-toggle">
-          <button
-            onClick={() => handleGradeEntryModeToggle(subject)}
-            className="liquid-glass-toggle-button"
-          >
-            {mode === 'terms' ? (
-              <ToggleLeft className="liquid-glass-toggle-icon" />
-            ) : (
-              <ToggleRight className="liquid-glass-toggle-icon liquid-glass-toggle-active" />
-            )}
-            <span className="liquid-glass-toggle-label">
-              {getGradeEntryModeLabel(subject)}
-            </span>
-          </button>
-        </div>
-
-        {mode === 'terms' ? (
-          <>
-            <div className="liquid-glass-terms-grid">
-              {termsForSubject.map(term => (
-                <div key={term} className="liquid-glass-term-input">
-                  <label className="liquid-glass-term-label">{term}</label>
-                  <Select
-                    value={termGrades[subject]?.[term] || ''}
-                    onValueChange={(value) => handleTermGradeChange(subject, term, value)}
-                  >
-                    <SelectTrigger className="liquid-glass-select">
-                      <SelectValue placeholder="Select grade" />
-                    </SelectTrigger>
-                    <SelectContent className="liquid-glass-select-content">
-                      {GRADE_OPTIONS.map(grade => (
-                        <SelectItem key={grade} value={grade} className="liquid-glass-select-item">
-                          {grade} ({GRADES[grade]} pts)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ))}
-            </div>
-            <div className="liquid-glass-progress-indicator">
-              <span className="liquid-glass-progress-text">
-                {termsCompleted}/{totalTermsRequired} {totalTermsRequired === 1 ? 'term' : 'terms'} completed
-              </span>
-              <div className="liquid-glass-progress-bar">
-                <div
-                  className="liquid-glass-progress-fill"
-                  style={{ width: `${progressWidth}%` }}
-                ></div>
-              </div>
-            </div>
-            {showSemesterFinal && calculationMode === 'current' && (
-              <div className="liquid-glass-semester-final">
-                <div className="liquid-glass-final-grade-input">
-                  <label className="liquid-glass-final-grade-label">Final Grade from D2L</label>
-                  <Select
-                    value={termFinalGrades[subject] || ''}
-                    onValueChange={(value) => handleTermFinalGradeChange(subject, value)}
-                  >
-                    <SelectTrigger className="liquid-glass-select liquid-glass-final-select">
-                      <SelectValue placeholder="Enter final grade" />
-                    </SelectTrigger>
-                    <SelectContent className="liquid-glass-select-content">
-                      {GRADE_OPTIONS.map(grade => (
-                        <SelectItem key={grade} value={grade} className="liquid-glass-select-item">
-                          {grade} ({GRADES[grade]} pts)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="liquid-glass-final-grade-indicator">
-                  <span className="liquid-glass-final-grade-status">
-                    {termFinalGrades[subject] ? 'Final grade recorded' : 'No final grade recorded yet'}
-                  </span>
-                </div>
-              </div>
-            )}
-            {calculationMode === 'future' && futureTerms.length > 0 && (
-              <div className="liquid-glass-expected-subject">
-                <div className="liquid-glass-expected-subject-name">Predict upcoming terms</div>
-                <div className="liquid-glass-expected-terms">
-                  {futureTerms.map(term => (
-                    <div key={term} className="liquid-glass-expected-term">
-                      <label className="liquid-glass-expected-label">{term}</label>
-                      <Select
-                        value={expectedGrades[subject]?.[term] || ''}
-                        onValueChange={(value) => handleExpectedGradeChange(subject, term, value)}
-                      >
-                        <SelectTrigger className="liquid-glass-select liquid-glass-expected-select">
-                          <SelectValue placeholder="Choose grade" />
-                        </SelectTrigger>
-                        <SelectContent className="liquid-glass-select-content">
-                          {GRADE_OPTIONS.map(grade => (
-                            <SelectItem key={grade} value={grade} className="liquid-glass-select-item">
-                              {grade} ({GRADES[grade]} pts)
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="liquid-glass-final-grade-entry">
-            <div className="liquid-glass-final-grade-input">
-              <label className="liquid-glass-final-grade-label">Final Grade from D2L</label>
-              <Select
-                value={directFinalGrades[subject] || ''}
-                onValueChange={(value) => handleDirectFinalGradeChange(subject, value)}
-              >
-                <SelectTrigger className="liquid-glass-select liquid-glass-final-select">
-                  <SelectValue placeholder="Enter final grade" />
-                </SelectTrigger>
-                <SelectContent className="liquid-glass-select-content">
-                  {GRADE_OPTIONS.map(grade => (
-                    <SelectItem key={grade} value={grade} className="liquid-glass-select-item">
-                      {grade} ({GRADES[grade]} pts)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="liquid-glass-final-grade-indicator">
-              <span className="liquid-glass-final-grade-status">
-                {directFinalGrades[subject] ? 'Final grade entered' : 'No final grade entered'}
-              </span>
-            </div>
-          </div>
-        )}
-        <div className="liquid-glass-subject-next-row">
-          <button
-            type="button"
-            onClick={goToNextSubject}
-            disabled={!hasNextSubject}
-            className="liquid-glass-button liquid-glass-primary-button"
-          >
-            <span>{hasNextSubject ? 'Next Subject' : 'All Subjects Entered'}</span>
-            <ChevronRight className="liquid-glass-button-icon" />
-          </button>
-        </div>
-      </div>
-    )
   }
 
-  const renderModeGuide = () => {
-    const isFuture = calculationMode === 'future'
-    const title = isFuture ? 'How to Use Future GPA Predictions' : 'How to Track Your Current GPA'
-    const description = isFuture
-      ? 'Estimate where your GPA is heading by projecting grades you expect to earn.'
-      : 'Record the grades you have right now to see your current standing.'
-    const steps = isFuture
-      ? [
-          'Choose the term you are in at the top so we know which grades are already locked in.',
-          'Enter any completed term grades as usual. For upcoming or unfinished terms, pick expected grades under "Predict upcoming terms".',
-          'Watch the Predicted GPA and Target GPA cards to see how tweaks to future grades change your path.'
-        ]
-      : [
-          'Pick the term you are in, then record each subject using term grades or switch to final grade if you already have the D2L result.',
-          'Make sure every subject you are taking is selected on the left and that each required term grade is filled in.',
-          'Review the Target GPA section to check what grades are still needed to hit each goal, then save to Google Doc if you want a record.'
-        ]
-    const tip = isFuture
-      ? 'Tip: Missing a term grade? Leave it blank and enter an expected grade instead - the predictor will fill the gap.'
-      : 'Tip: If a D2L final is available, switch that subject to "Final Grade" to lock in the official score.'
-
-    return (
-      <div className="liquid-glass-card liquid-glass-guide-card">
-        <div className="liquid-glass-card-header">
-          <div className="liquid-glass-card-title">
-            <Info className="liquid-glass-card-icon" />
-            {title}
-          </div>
-          <p className="liquid-glass-card-description">{description}</p>
-        </div>
-        <div className="liquid-glass-card-content">
-          <ol className="liquid-glass-guide-list">
-            {steps.map((step, idx) => (
-              <li key={`${calculationMode}-guide-${idx}`}>{step}</li>
-            ))}
-          </ol>
-          <p className="liquid-glass-guide-tip">{tip}</p>
-        </div>
-      </div>
-    )
-  }
-
-  const projectedGPA = calculateProjectedGPA()
-  const futureSuggestions = getFutureImprovementSuggestions(projectedGPA)
-  const enteredFinalGradeCount = selectedSubjects.filter(subject => finalGrades[subject]).length
-  const activeSubjectIndex = selectedSubjects.indexOf(activeSubject)
-  const hasNextSubject = activeSubjectIndex >= 0 && activeSubjectIndex < selectedSubjects.length - 1
-  const goToNextSubject = () => {
-    if (hasNextSubject) {
-      setActiveSubject(selectedSubjects[activeSubjectIndex + 1])
-    }
-  }
-
-  const handleTargetDialogOpenChange = (open) => {
-    if (open) {
-      setShowTargetGPADialog(true)
+  const saveSnapshotToGoogleDoc = async () => {
+    if (!studentName.trim()) {
+      setSaveErrorMessage('Enter your name before saving.')
       return
     }
 
-    setShowTargetGPADialog(false)
-    if (currentStep === 'selection') {
-      handleSkipTargetGPA()
+    if (!studentYearLevel.trim()) {
+      setSaveErrorMessage('Enter your year level before saving.')
+      return
+    }
+
+    if (isInappropriateName(studentName)) {
+      setSaveErrorMessage('That name looks invalid. Please use your real name.')
+      return
+    }
+
+    setIsSaving(true)
+    setSaveStatusMessage('')
+    setSaveErrorMessage('')
+
+    const subjectSummaries = selectedSubjects.map(subject => ({
+      subject,
+      weight: SUBJECTS[subject],
+      entryMode: gradeEntryModes[subject] || 'final',
+      finalGrade: finalGrades[subject]?.grade ?? null,
+      finalPoints: finalGrades[subject]?.points ?? null,
+      termGrades: termGrades[subject] ?? {},
+      directFinalGrade: directFinalGrades[subject] ?? null,
+      semesterFinalGrade: termFinalGrades[subject] ?? null
+    }))
+
+    const payload = {
+      studentName: studentName.trim(),
+      yearLevel: studentYearLevel.trim(),
+      currentTerm,
+      detectedTerm: getDetectedTerm(),
+      termSelectionMode,
+      gpa: gpa !== null ? Number(gpa.toFixed(2)) : null,
+      yearlyGpa: yearlyGPA !== null ? Number(yearlyGPA.toFixed(2)) : null,
+      targetGpa: targetGPA,
+      completedSubjects: enteredFinalGradeCount,
+      totalSubjects: selectedSubjects.length,
+      subjects: subjectSummaries,
+      timestamp: new Date().toISOString(),
+      googleDocId: GOOGLE_DOC_ID
+    }
+
+    const savedLocally = persistLocalGpaSnapshot(payload)
+
+    try {
+      const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          data: JSON.stringify(payload)
+        })
+      })
+
+      setSaveStatusMessage(
+        response.type === 'opaque'
+          ? `Saved locally${savedLocally ? '' : ' could not be confirmed'} and sent a Google Docs request for ${studentName.trim()}.`
+          : `Saved ${studentName.trim()}'s ${studentYearLevel.trim()} GPA locally and to Google Docs.`
+      )
+    } catch (error) {
+      console.error('Failed to save GPA to Google Doc:', error)
+      setSaveErrorMessage(`Saved locally${savedLocally ? '' : ' could not be confirmed'}, but Google Docs could not be reached. ${error.message || ''}`.trim())
+    } finally {
+      setIsSaving(false)
     }
   }
 
-  const renderCustomTargetInput = () => (
-    <div className="liquid-glass-custom-target">
-      <div className="liquid-glass-input-group">
-        <label className="liquid-glass-input-label">Add Custom Target GPA:</label>
-        <div className="liquid-glass-custom-target-input-wrapper">
-          <Input
-            type="number"
-            min="0"
-            max="15"
-            step="0.1"
-            value={customTargetGPA}
-            onChange={(e) => setCustomTargetGPA(e.target.value)}
-            placeholder="e.g., 13.8"
-            className="liquid-glass-input liquid-glass-custom-target-input"
-          />
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault()
-              const gpaValue = parseFloat(customTargetGPA)
+  const renderTopBar = (title) => (
+    <header className="gpa-final-topbar">
+      <div className="gpa-final-topbar-title">{title}</div>
+      <button
+        type="button"
+        className="gpa-icon-button"
+        onClick={() => {
+          setSettingsTargetInput(targetGPA ? String(targetGPA) : '')
+          setShowSettings(true)
+        }}
+        aria-label="Open settings"
+        title="Settings"
+      >
+        <Settings aria-hidden="true" />
+      </button>
+    </header>
+  )
 
-              if (!gpaValue || isNaN(gpaValue)) {
-                alert('Please enter a valid number')
-                return
-              }
-
-              if (gpaValue < MIN_GPA_VALUE || gpaValue > MAX_GPA_VALUE) {
-                alert(`Please enter a GPA between ${MIN_GPA_VALUE} and ${MAX_GPA_VALUE}`)
-                return
-              }
-
-              const exists = targetGPAs.some(target => Math.abs(target - gpaValue) < 0.01)
-              if (exists) {
-                alert('This target GPA is already in the list!')
-                return
-              }
-
-              setTargetGPAs([...targetGPAs, gpaValue].sort((a, b) => a - b))
-              setCustomTargetGPA('')
-            }}
-            disabled={!customTargetGPA || customTargetGPA.trim() === ''}
-            className="liquid-glass-button liquid-glass-add-target-button"
-          >
-            Add Target
-          </button>
-        </div>
-      </div>
+  const renderGradeSummary = (showOnlyEntered = false) => (
+    <div className="gpa-grade-list">
+      {selectedSubjects
+        .filter(subject => !showOnlyEntered || finalGrades[subject])
+        .map(subject => (
+          <div className="gpa-grade-row" key={subject}>
+            <span className="gpa-grade-subject">{subject}</span>
+            <span className={`gpa-grade-column${finalGrades[subject] ? '' : ' is-empty'}`}>
+              {finalGrades[subject]?.grade || 'Not entered'}
+            </span>
+          </div>
+        ))}
     </div>
   )
 
-  const targetGPADialog = (
-    <Dialog open={showTargetGPADialog} onOpenChange={handleTargetDialogOpenChange}>
-      <DialogContent className="liquid-glass-dialog">
-        <DialogHeader>
-          <DialogTitle className="liquid-glass-dialog-title">
-            <Target className="liquid-glass-dialog-icon" />
-            Set Your Target GPA
-          </DialogTitle>
-          <DialogDescription className="liquid-glass-dialog-description">
-            What GPA are you aiming for? This will help us show you what grades you need.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="liquid-glass-dialog-content" style={{ padding: '24px 20px' }}>
-          <div className="liquid-glass-input-group">
-            <label className="liquid-glass-input-label" style={{ marginBottom: '8px', display: 'block' }}>
-              Target GPA (0.1 - 15.0):
-            </label>
-            <Input
-              type="number"
-              min="0.1"
-              max="15"
-              step="0.1"
-              value={initialTargetGPA}
-              onChange={(e) => setInitialTargetGPA(e.target.value)}
-              placeholder="e.g., 13.5"
-              className="liquid-glass-input"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handleTargetGPASubmit()
-                }
-              }}
-            />
-          </div>
-          <p style={{ fontSize: '0.875rem', color: 'rgba(107, 114, 128, 0.8)', marginTop: '12px' }}>
-            You can skip this and add target GPAs later if you prefer.
-          </p>
+  const renderRequirements = () => {
+    if (!targetGPA) return null
+
+    return (
+      <section className="gpa-card gpa-lower-card">
+        <div className="gpa-card-heading-row">
+          <h2>Requirements</h2>
+          <span className="gpa-target-number">{formatGpa(targetGPA)}</span>
         </div>
-        <DialogFooter className="liquid-glass-dialog-footer" style={{ padding: '16px 20px', gap: '12px' }}>
-          <Button
-            onClick={handleSkipTargetGPA}
-            variant="outline"
-            className="liquid-glass-dialog-button liquid-glass-dialog-cancel"
-          >
-            Skip
-          </Button>
-          <Button
-            onClick={handleTargetGPASubmit}
-            className="liquid-glass-dialog-button liquid-glass-dialog-save"
-          >
-            <Target className="liquid-glass-button-icon-left" />
-            Set Target
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <p className="gpa-card-note">{targetRequirements.message}</p>
+        {targetRequirements.possible && Object.keys(targetRequirements.grades).length > 0 ? (
+          <div className="gpa-grade-list">
+            {Object.entries(targetRequirements.grades).map(([subject, grade]) => (
+              <div className="gpa-grade-row" key={subject}>
+                <span className="gpa-grade-subject">{subject}</span>
+                <span className="gpa-grade-column">{grade}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </section>
+    )
+  }
+
+  const renderSelectionScreen = () => (
+    <main className="gpa-final-page">
+      {renderTopBar('')}
+      <section className={`gpa-selection-panel${isTargetTransitioning ? ' is-transitioning' : ''}`}>
+        <h1>Choose your electives</h1>
+        <div className="gpa-selected-count">{selectedElectiveCount} of {MAX_ELECTIVES} selected</div>
+        <div className="gpa-elective-grid" aria-label="Electives">
+          {ELECTIVE_SUBJECTS.map(subject => {
+            const isSelected = selectedSubjects.includes(subject)
+            const isDisabled = !isSelected && selectedElectiveCount >= MAX_ELECTIVES
+            return (
+              <button
+                type="button"
+                key={subject}
+                className={`gpa-elective-button${isSelected ? ' is-selected' : ''}`}
+                onClick={() => handleElectiveToggle(subject)}
+                disabled={isDisabled}
+                aria-pressed={isSelected}
+              >
+                <span>{subject}</span>
+                {isSelected ? <Check aria-hidden="true" /> : null}
+              </button>
+            )
+          })}
+        </div>
+        {persistenceWarning ? (
+          <p className="gpa-quiet-warning">Progress may not persist because browser storage was blocked.</p>
+        ) : null}
+      </section>
+    </main>
   )
 
-  if (currentStep === 'selection') {
-    return (
-      <>
-        <div className="liquid-glass-app" style={appThemeStyle}>
-          <div className="liquid-glass-background"></div>
-          <div className="liquid-glass-container">
-            <div className="liquid-glass-header">
-              <div className="liquid-glass-icon-wrapper">
-                <GraduationCap className="liquid-glass-icon" />
-                <Sparkles className="liquid-glass-sparkle" />
-              </div>
-              <h1 className="liquid-glass-title">GPA Calculator</h1>
-              <p className="liquid-glass-subtitle">Choose your electives first, then enter grades and see your GPA update instantly.</p>
-              <p className="liquid-glass-subtitle-small">Core subjects are already included for everyone.</p>
-              {persistenceWarning ? (
-                <p className="liquid-glass-subtitle-small">Heads up: your browser blocked local saving, so progress may not persist after refresh.</p>
-              ) : null}
-            </div>
-
-            <div className="liquid-glass-card liquid-glass-main-card liquid-glass-elective-card">
-              <div className="liquid-glass-card-header">
-                <div className="liquid-glass-card-title">
-                  <BookOpen className="liquid-glass-card-icon" />
-                  Select Your Electives
-                </div>
-                <p className="liquid-glass-card-description">
-                  Pick up to {MAX_ELECTIVES}. This is the only subject choice you need to make.
-                </p>
-              </div>
-              <div className="liquid-glass-card-content">
-                {showElectiveChooser ? (
-                  <>
-                    <div className="liquid-glass-elective-hero">
-                      <div>
-                        <div className="liquid-glass-kicker">Step 1 of 2</div>
-                        <h2>Choose the electives you actually take.</h2>
-                        <p>Your five core subjects are added in the background, so this screen stays focused on the choices you control.</p>
-                      </div>
-                      <div className="liquid-glass-elective-meter">
-                        <span>{selectedElectiveCount}/{MAX_ELECTIVES}</span>
-                        <small>electives selected</small>
-                      </div>
-                    </div>
-                    <div className="liquid-glass-subject-section liquid-glass-subject-section-primary">
-                      <h3 className="liquid-glass-subject-section-title">Available Electives</h3>
-                      <p className="liquid-glass-subject-section-meta">
-                        Electives are weighted at {DEFAULT_ELECTIVE_WEIGHT}, including Spanish and Japanese.
-                      </p>
-                      <div className="liquid-glass-subjects-grid">
-                        {ELECTIVE_SUBJECTS.map(subject => (
-                          <div key={subject} className={`liquid-glass-subject-item${selectedSubjects.includes(subject) ? ' is-selected' : ''}`}>
-                            <Checkbox
-                              id={subject}
-                              checked={selectedSubjects.includes(subject)}
-                              onCheckedChange={(checked) => handleSubjectToggle(subject, checked)}
-                              disabled={!selectedSubjects.includes(subject) && selectedElectiveCount >= MAX_ELECTIVES}
-                              className="liquid-glass-checkbox"
-                            />
-                            <label htmlFor={subject} className="liquid-glass-subject-label">
-                              <div className="liquid-glass-subject-name">{subject}</div>
-                              <div className="liquid-glass-subject-weight">Weight: {SUBJECTS[subject]}</div>
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="liquid-glass-elective-summary">
-                    <div className="liquid-glass-elective-summary-header">
-                      <div>
-                        <div className="liquid-glass-kicker">Electives selected</div>
-                        <h2>{selectedElectiveCount}/{MAX_ELECTIVES} chosen</h2>
-                        <p>Core subjects stay included automatically. Use the button to change electives whenever you need to.</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowElectiveChooser(true)}
-                        className="liquid-glass-auto-term-button"
-                      >
-                        Choose electives
-                      </button>
-                    </div>
-                    <div className="liquid-glass-badges">
-                      {selectedElectives.map(subject => (
-                        <div key={subject} className="liquid-glass-badge">{subject}</div>
-                      ))}
-                    </div>
-                    <button onClick={proceedToGradeEntry} className="liquid-glass-button liquid-glass-primary-button">
-                      <span>Continue to Grade Entry</span>
-                      <Calculator className="liquid-glass-button-icon" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {showElectiveChooser && selectedSubjects.length > 0 && (
-              <div className="liquid-glass-card liquid-glass-selected-card">
-                <div className="liquid-glass-card-content">
-                  <div className="liquid-glass-selected-subjects">
-                    <span className="liquid-glass-selected-label">
-                      {selectedElectiveCount > 0 ? `${selectedElectiveCount} elective${selectedElectiveCount === 1 ? '' : 's'} selected` : 'No electives selected yet'}
-                    </span>
-                    <div className="liquid-glass-badges">
-                      {selectedElectives.length > 0 ? selectedElectives.map(subject => (
-                        <div key={subject} className="liquid-glass-badge">{subject}</div>
-                      )) : (
-                        <div className="liquid-glass-badge liquid-glass-badge-muted">Core subjects included automatically</div>
-                      )}
-                    </div>
-                  </div>
-                  <button onClick={proceedToGradeEntry} className="liquid-glass-button liquid-glass-primary-button">
-                    <span>Continue to Grade Entry</span>
-                    <Calculator className="liquid-glass-button-icon" />
-                  </button>
-                </div>
-              </div>
-            )}
+  const renderTargetScreen = () => (
+    <main className="gpa-final-page">
+      {renderTopBar('')}
+      <section className="gpa-target-stage" aria-label="Optional target GPA">
+        <div className="gpa-target-card">
+          <h1>Target GPA</h1>
+          <input
+            type="number"
+            min={MIN_GPA_VALUE}
+            max={MAX_GPA_VALUE}
+            step="0.1"
+            value={targetInput}
+            onChange={(event) => setTargetInput(event.target.value)}
+            placeholder="14"
+            className="gpa-target-input"
+          />
+          <div className="gpa-target-actions">
+            <button type="button" className="gpa-secondary-action" onClick={skipTargetAndContinue}>Skip</button>
+            <button type="button" className="gpa-primary-action" onClick={saveTargetAndContinue}>Save</button>
           </div>
         </div>
-        {targetGPADialog}
-      </>
+      </section>
+    </main>
+  )
+
+  const renderGradeEntryScreen = () => (
+    <main className="gpa-final-page">
+      {renderTopBar('Enter your grades')}
+      <section className="gpa-grade-card gpa-card">
+        <div className="gpa-grade-workspace">
+          <div className="gpa-grade-left">
+            <div className="gpa-subject-heading-row">
+              <h1>{activeSubject}</h1>
+              <span>{activeSubjectIndex + 1} of {selectedSubjects.length}</span>
+            </div>
+            <div className="gpa-grade-button-table" aria-label={`Grade buttons for ${activeSubject}`}>
+              {GRADE_ROWS.map(row => (
+                <div className="gpa-grade-button-row" key={row.join('-')}>
+                  {row.map(grade => (
+                    <button
+                      type="button"
+                      key={grade}
+                      className={`gpa-grade-button${selectedGrade === grade ? ' is-selected' : ''}`}
+                      onClick={() => handleGradeSelect(activeSubject, grade)}
+                      aria-pressed={selectedGrade === grade}
+                    >
+                      {grade}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+          <aside className="gpa-grade-right">
+            <span>Selected grade</span>
+            <strong>{selectedGrade || '-'}</strong>
+            <button
+              type="button"
+              className="gpa-next-subject-button"
+              onClick={handleNextSubject}
+              disabled={!selectedGrade}
+            >
+              {activeSubjectIndex === selectedSubjects.length - 1 ? 'See GPA' : 'Next subject'}
+              <ChevronRight aria-hidden="true" />
+            </button>
+          </aside>
+        </div>
+      </section>
+      <section className={`gpa-lower-grid${targetGPA ? '' : ' single'}`}>
+        <section className="gpa-card gpa-lower-card">
+          <h2>Grade summary</h2>
+          {renderGradeSummary()}
+        </section>
+        {renderRequirements()}
+      </section>
+    </main>
+  )
+
+  const renderResultsScreen = () => (
+    <main className="gpa-final-page">
+      {renderTopBar('Your GPA')}
+      <section className="gpa-card gpa-result-card">
+        <div className="gpa-result-number">{gpa && gpa > 0 ? gpa.toFixed(2) : '--'}</div>
+        <div className="gpa-result-subtitle">
+          {closestGpaGrade ? `Closest grade: ${closestGpaGrade}` : 'Enter grades to calculate your GPA'}
+        </div>
+        {targetGPA ? (
+          <div className={`gpa-target-comparison ${gpa >= targetGPA ? 'is-met' : 'is-short'}`}>
+            {gpa >= targetGPA
+              ? `Meets target ${formatGpa(targetGPA)}`
+              : `${(targetGPA - (gpa || 0)).toFixed(2)} below target ${formatGpa(targetGPA)}`}
+          </div>
+        ) : null}
+        <div className="gpa-result-actions">
+          <button type="button" className="gpa-primary-action" onClick={() => saveCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
+            <Save aria-hidden="true" />
+            Save result
+          </button>
+          <button type="button" className="gpa-secondary-action" onClick={() => setCurrentStep('gradeEntry')}>Edit grades</button>
+          <button type="button" className="gpa-secondary-action" onClick={() => setCurrentStep('selection')}>Change electives</button>
+        </div>
+      </section>
+      <section className="gpa-lower-grid">
+        <section className="gpa-card gpa-lower-card">
+          <h2>Grade summary</h2>
+          {renderGradeSummary(true)}
+        </section>
+        <section className="gpa-card gpa-lower-card" ref={saveCardRef}>
+          <h2>Save result</h2>
+          <div className="gpa-save-form">
+            <label>
+              Student name
+              <input
+                value={studentName}
+                onChange={(event) => setStudentName(event.target.value)}
+                placeholder=""
+              />
+            </label>
+            <label>
+              Year level
+              <input
+                value={studentYearLevel}
+                onChange={(event) => setStudentYearLevel(event.target.value)}
+                placeholder=""
+              />
+            </label>
+            <button
+              type="button"
+              className="gpa-primary-action"
+              onClick={saveSnapshotToGoogleDoc}
+              disabled={isSaving}
+            >
+              {isSaving ? 'Saving...' : 'Save result'}
+            </button>
+          </div>
+          {saveStatusMessage ? <p className="gpa-save-status">{saveStatusMessage}</p> : null}
+          {saveErrorMessage ? <p className="gpa-save-error" role="alert">{saveErrorMessage}</p> : null}
+        </section>
+      </section>
+    </main>
+  )
+
+  const renderSettings = () => {
+    if (!showSettings) return null
+
+    return (
+      <div className="gpa-settings-backdrop" role="presentation" onMouseDown={() => setShowSettings(false)}>
+        <aside className="gpa-settings-panel" role="dialog" aria-modal="true" aria-label="Settings" onMouseDown={event => event.stopPropagation()}>
+          <div className="gpa-settings-header">
+            <h2>Settings</h2>
+            <button type="button" className="gpa-icon-button" onClick={() => setShowSettings(false)} aria-label="Close settings">
+              <X aria-hidden="true" />
+            </button>
+          </div>
+          <div className="gpa-settings-section">
+            <h3>Theme</h3>
+            <div className="gpa-theme-presets">
+              {Object.keys(THEME_PRESETS).map(preset => (
+                <button type="button" key={preset} onClick={() => applyThemePreset(preset)}>{preset}</button>
+              ))}
+            </div>
+            <div className="gpa-theme-colors">
+              {[
+                ['primary', 'Main'],
+                ['primaryStrong', 'Dark'],
+                ['background', 'Background'],
+                ['surface', 'Cards'],
+                ['text', 'Text'],
+                ['accent', 'Accent']
+              ].map(([key, label]) => (
+                <label key={key}>
+                  {label}
+                  <input type="color" value={theme[key]} onChange={event => handleThemeChange(key, event.target.value)} />
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="gpa-settings-section">
+            <h3>Target GPA</h3>
+            <div className="gpa-settings-row">
+              <input
+                type="number"
+                min={MIN_GPA_VALUE}
+                max={MAX_GPA_VALUE}
+                step="0.1"
+                value={settingsTargetInput}
+                onChange={event => setSettingsTargetInput(event.target.value)}
+                placeholder={targetGPA ? formatGpa(targetGPA) : ''}
+              />
+              <button type="button" onClick={handleSettingsTargetSave}>Save</button>
+              <button type="button" onClick={() => setTargetGPA(null)}>Clear</button>
+            </div>
+          </div>
+          <div className="gpa-settings-section">
+            <h3>Student details</h3>
+            <label>
+              Year level
+              <input value={studentYearLevel} onChange={event => setStudentYearLevel(event.target.value)} />
+            </label>
+          </div>
+          <div className="gpa-settings-section">
+            <h3>Reset progress</h3>
+            <button type="button" className="gpa-reset-button" onClick={resetCalculator}>
+              <RotateCcw aria-hidden="true" />
+              Reset progress
+            </button>
+          </div>
+        </aside>
+      </div>
     )
   }
 
   return (
-    <div className="liquid-glass-app" style={appThemeStyle}>
-      <div className="liquid-glass-background"></div>
-      <div className="liquid-glass-container liquid-glass-grade-container">
-        <div className="liquid-glass-header">
-          <div className="liquid-glass-icon-wrapper">
-            <GraduationCap className="liquid-glass-icon" />
-            <Sparkles className="liquid-glass-sparkle" />
-          </div>
-          <h1 className="liquid-glass-title">GPA Calculator</h1>
-          <p className="liquid-glass-subtitle-small">Enter grades by subject. Results update as you go.</p>
-          <div className="liquid-glass-mode-switch">
-            <button
-              type="button"
-              onClick={() => setCalculationMode('current')}
-              className={`liquid-glass-mode-button${calculationMode === 'current' ? ' is-active' : ''}`}
-            >
-              Calculate Current GPA
-            </button>
-            <button
-              type="button"
-              onClick={() => setCalculationMode('future')}
-              className={`liquid-glass-mode-button${calculationMode === 'future' ? ' is-active' : ''}`}
-            >
-              Predict Future GPA
-            </button>
-          </div>
-          <div className="liquid-glass-mode-explainer">
-            {calculationMode === 'current' ? (
-              <>
-                <strong>Current GPA</strong> uses grades you already have. It answers: "Where am I sitting right now?"
-              </>
-            ) : (
-              <>
-                <strong>Future GPA</strong> adds your expected grades for unfinished terms. It answers: "What happens if I keep going like this?"
-              </>
-            )}
-          </div>
-          <button onClick={() => setCurrentStep('selection')} className="liquid-glass-button liquid-glass-secondary-button">
-            Edit Subjects
-          </button>
-        </div>
-
-        <div className="liquid-glass-grade-layout">
-          <aside className="liquid-glass-elective-rail">
-            <div className="liquid-glass-card liquid-glass-rail-card">
-              <div className="liquid-glass-card-header">
-                <div className="liquid-glass-card-title">
-                  <BookOpen className="liquid-glass-card-icon" />
-                  Subjects
-                </div>
-                <p className="liquid-glass-card-description">
-                  {selectedElectiveCount}/{MAX_ELECTIVES} electives selected
-                </p>
-              </div>
-              <div className="liquid-glass-card-content">
-                <div className="liquid-glass-rail-section">
-                  <div className="liquid-glass-rail-section-title">Electives</div>
-                  <div className="liquid-glass-badges">
-                    {selectedElectives.length > 0 ? selectedElectives.map(subject => (
-                      <div key={subject} className="liquid-glass-badge">{subject}</div>
-                    )) : (
-                      <div className="liquid-glass-badge liquid-glass-badge-muted">Core only</div>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowElectiveChooser(true)
-                      setCurrentStep('selection')
-                    }}
-                    className="liquid-glass-button liquid-glass-secondary-button liquid-glass-rail-button"
-                  >
-                    Choose electives
-                  </button>
-                </div>
-
-                <div className="liquid-glass-rail-section">
-                  <div className="liquid-glass-rail-section-title">Grade entry</div>
-                  <div className="liquid-glass-subject-nav">
-                    {selectedSubjects.map(subject => (
-                      <button
-                        type="button"
-                        key={subject}
-                        onClick={() => setActiveSubject(subject)}
-                        className={`liquid-glass-subject-nav-button${activeSubject === subject ? ' is-active' : ''}`}
-                      >
-                        <span className="liquid-glass-subject-nav-name">{subject}</span>
-                        <span className="liquid-glass-subject-nav-weight">Weight {SUBJECTS[subject]}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </aside>
-
-          {/* Grade Entry Section */}
-          <div className="liquid-glass-grade-entry">
-            {renderModeGuide()}
-            <div className="liquid-glass-card">
-              <div className="liquid-glass-card-header">
-                <div className="liquid-glass-card-title">
-                  <Calendar className="liquid-glass-card-icon" />
-                  Enter Grades
-                </div>
-                <p className="liquid-glass-card-description">
-                  Choose between term-based calculation or direct final grade entry for each subject
-                </p>
-                <div className="liquid-glass-grade-context">
-                  <div className="liquid-glass-term-selector-label-group">
-                    <span className="liquid-glass-term-selector-label">Grade period</span>
-                    <span className="liquid-glass-term-selector-description">
-                      {termSelectionMode === 'manual'
-                        ? `Manually set. Auto-detected term is ${detectedTerm}.`
-                        : `Auto-detected from ${detectedTermInfo.source}.`}
-                    </span>
-                  </div>
-                  <div className="liquid-glass-term-controls">
-                    <Select value={currentTerm} onValueChange={handleCurrentTermChange}>
-                      <SelectTrigger className="liquid-glass-select liquid-glass-term-select">
-                        <SelectValue placeholder="Select term" />
-                      </SelectTrigger>
-                      <SelectContent className="liquid-glass-select-content">
-                        {TERMS.map(term => (
-                          <SelectItem key={term} value={term} className="liquid-glass-select-item">
-                            {term}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {termSelectionMode === 'manual' ? (
-                      <button
-                        type="button"
-                        onClick={handleUseDetectedTerm}
-                        className="liquid-glass-auto-term-button"
-                      >
-                        Use auto
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-              <div className="liquid-glass-card-content">
-
-                {/* Global Mode Toggle */}
-                {selectedSubjects.length > 0 && (
-                  <div className="liquid-glass-global-toggle">
-                    <button
-                      onClick={handleGlobalModeToggle}
-                      className="liquid-glass-global-toggle-button"
-                    >
-                      {getGlobalModeStatus() === 'final' ? (
-                        <ToggleRight className="liquid-glass-toggle-icon liquid-glass-toggle-active" />
-                      ) : (
-                        <ToggleLeft className="liquid-glass-toggle-icon" />
-                      )}
-                      <span className="liquid-glass-toggle-label">
-                        {getGlobalModeStatus() === 'final' 
-                          ? 'Switch All to Term Grades' 
-                          : getGlobalModeStatus() === 'terms'
-                          ? 'Switch All to Final Grades (D2L)'
-                          : 'Switch All to Final Grades (D2L)'}
-                      </span>
-                    </button>
-                    <p className="liquid-glass-global-toggle-description">
-                      {getGlobalModeStatus() === 'final' 
-                        ? 'All subjects are using final grade entry'
-                        : getGlobalModeStatus() === 'terms'
-                        ? 'All subjects are using term-based calculation'
-                        : 'Mixed modes - some subjects use terms, others use final grades'}
-                    </p>
-                  </div>
-                )}
-                
-                {selectedSubjects.length > 0 ? (
-                  <div className="liquid-glass-grade-entry-columns">
-                    <div className="liquid-glass-subject-panel">
-                      {renderSubjectPanel()}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="liquid-glass-subject-placeholder">
-                    <p>Select at least one subject to begin entering grades.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Results Section */}
-          <div className="liquid-glass-results">
-            <div className="liquid-glass-card liquid-glass-summary-card">
-              <div className="liquid-glass-card-header">
-                <div className="liquid-glass-card-title">
-                  <Trophy className="liquid-glass-card-icon" />
-                  Grade Summary
-                </div>
-                <p className="liquid-glass-card-description">
-                  Quick check of every subject grade. English is highlighted.
-                </p>
-              </div>
-              <div className="liquid-glass-card-content">
-                <div className="liquid-glass-grade-summary-list">
-                  {selectedSubjects.map(subject => (
-                    <div key={subject} className={`liquid-glass-grade-summary-item${subject === 'English' ? ' liquid-glass-english-summary' : ''}`}>
-                      <span>{subject}</span>
-                      <strong>{finalGrades[subject]?.grade || 'Not entered'}</strong>
-                    </div>
-                  ))}
-                </div>
-                <div className="liquid-glass-english-callout">
-                  English is currently {finalGrades.English?.grade || 'not entered yet'}.
-                </div>
-              </div>
-            </div>
-
-            <div className="liquid-glass-card liquid-glass-theme-card">
-              <div className="liquid-glass-card-header">
-                <div className="liquid-glass-card-title">
-                  <Palette className="liquid-glass-card-icon" />
-                  Theme
-                </div>
-                <p className="liquid-glass-card-description">
-                  Change the colors and keep them for next time.
-                </p>
-              </div>
-              <div className="liquid-glass-card-content">
-                <Select onValueChange={applyThemePreset}>
-                  <SelectTrigger className="liquid-glass-select">
-                    <SelectValue placeholder="Choose a preset" />
-                  </SelectTrigger>
-                  <SelectContent className="liquid-glass-select-content">
-                    {Object.keys(THEME_PRESETS).map(preset => (
-                      <SelectItem key={preset} value={preset} className="liquid-glass-select-item">
-                        {preset}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="liquid-glass-theme-grid">
-                  {[
-                    ['primary', 'Main'],
-                    ['primaryStrong', 'Dark main'],
-                    ['background', 'Background'],
-                    ['surface', 'Cards'],
-                    ['text', 'Text'],
-                    ['accent', 'Accent']
-                  ].map(([key, label]) => (
-                    <label key={key} className="liquid-glass-color-control">
-                      <span>{label}</span>
-                      <input
-                        type="color"
-                        value={theme[key]}
-                        onChange={(event) => handleThemeChange(key, event.target.value)}
-                      />
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {calculationMode === 'current' ? (
-              <>
-                <div className="liquid-glass-card liquid-glass-gpa-card">
-                  <div className="liquid-glass-card-header">
-                    <div className="liquid-glass-card-title">
-                      <Calculator className="liquid-glass-card-icon" />
-                      Current GPA
-                    </div>
-                  </div>
-                  <div className="liquid-glass-card-content">
-                    <div className="liquid-glass-gpa-display">
-                      <div className="liquid-glass-gpa-number">
-                        {gpa !== null && gpa > 0 ? gpa.toFixed(2) : '--'}
-                      </div>
-                      <div className="liquid-glass-gpa-max">out of 15.00</div>
-                      <div className="liquid-glass-gpa-note">
-                        {enteredFinalGradeCount} of {selectedSubjects.length} subjects counted
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {(gpa && gpa > 0 && enteredFinalGradeCount > 0) ? (
-                  <div className="liquid-glass-card liquid-glass-save-card">
-                    <div className="liquid-glass-card-content">
-                      <div>
-                        <div className="liquid-glass-save-card-title">Save this GPA snapshot</div>
-                        <p className="liquid-glass-save-card-copy">
-                          Saves this result to Google Docs with your name, year, term, GPA, and subjects.
-                        </p>
-                        {saveStatusMessage ? (
-                          <p className="liquid-glass-save-status">{saveStatusMessage}</p>
-                        ) : null}
-                      </div>
-                      <button
-                        onClick={() => {
-                          setSaveErrorMessage('')
-                          setShowSaveDialog(true)
-                        }}
-                        className="liquid-glass-button liquid-glass-save-button"
-                      >
-                        <Save className="liquid-glass-button-icon-left" />
-                        <span>Save GPA</span>
-                        <FileText className="liquid-glass-button-icon" />
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-
-                <div className="liquid-glass-card liquid-glass-requirements-card">
-                  <div className="liquid-glass-card-header">
-                    <div className="liquid-glass-card-title">
-                      <Target className="liquid-glass-card-icon" />
-                      Grade Requirements
-                    </div>
-                    <p className="liquid-glass-card-description">
-                      What final grades you need for target GPAs
-                    </p>
-                  </div>
-                  <div className="liquid-glass-card-content">
-                    {renderCustomTargetInput()}
-
-                    <div className="liquid-glass-requirements">
-                      {targetGPAs.map(targetGPA => {
-                        const requirements = calculateRequiredGrades(targetGPA)
-                        const hasUnenteredGrades = Object.keys(requirements.grades).length > 0
-                        const improvements = suggestImprovements(targetGPA)
-
-                        return (
-                          <div key={targetGPA} className="liquid-glass-requirement-item">
-                            <div className="liquid-glass-requirement-header">
-                              <h4 className="liquid-glass-requirement-title">Target GPA: {targetGPA}</h4>
-                              <div className="liquid-glass-requirement-header-actions">
-                                <div className={`liquid-glass-requirement-badge ${requirements.possible ? 'liquid-glass-badge-success' : 'liquid-glass-badge-error'}`}>
-                                  {requirements.possible ? 'Achievable' : 'Not Possible'}
-                                </div>
-                                {!([13.5, 14.0, 14.5].includes(targetGPA)) && (
-                                  <button
-                                    onClick={() => setTargetGPAs(targetGPAs.filter(gpa => gpa !== targetGPA))}
-                                    className="liquid-glass-remove-target-button"
-                                    title="Remove target GPA"
-                                    aria-label={`Remove target GPA ${targetGPA}`}
-                                  >
-                                    <X aria-hidden="true" />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-
-                            {requirements.possible && hasUnenteredGrades && (
-                              <div className="liquid-glass-requirement-details">
-                                <p className="liquid-glass-requirement-label">Required final grades:</p>
-                                <div className="liquid-glass-requirement-grades">
-                                  {Object.entries(requirements.grades).map(([subject, requiredGrade]) => (
-                                    <div key={subject} className="liquid-glass-requirement-grade">
-                                      <span className="liquid-glass-requirement-subject">{subject}:</span>
-                                      <div className="liquid-glass-requirement-grade-badge">{requiredGrade}</div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {requirements.possible && !hasUnenteredGrades && gpa && gpa < targetGPA && improvements.possible && (
-                              <div className="liquid-glass-requirement-details">
-                                <p className="liquid-glass-requirement-label">Suggested improvements to reach target:</p>
-                                <div className="liquid-glass-requirement-grades">
-                                  {improvements.suggestions.map((suggestion, idx) => (
-                                    <div key={idx} className="liquid-glass-requirement-grade">
-                                      <span className="liquid-glass-requirement-subject">{suggestion.subject}:</span>
-                                      <div className="liquid-glass-improvement-badge">
-                                        {`${suggestion.from} -> ${suggestion.to} (+${suggestion.impact} GPA)`}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {requirements.possible && !hasUnenteredGrades && (
-                              <p className="liquid-glass-requirement-message liquid-glass-success-message">
-                                {gpa >= targetGPA ? 'Already achieved' : 'All grades entered'}
-                              </p>
-                            )}
-
-                            {!requirements.possible && (
-                              <p className="liquid-glass-requirement-message liquid-glass-error-message">
-                                Target GPA not achievable with remaining subjects
-                              </p>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="liquid-glass-card liquid-glass-gpa-card">
-                  <div className="liquid-glass-card-header">
-                    <div className="liquid-glass-card-title">
-                      <Sparkles className="liquid-glass-card-icon" />
-                      Predicted GPA
-                    </div>
-                  </div>
-                  <div className="liquid-glass-card-content">
-                    <div className="liquid-glass-gpa-display">
-                      <div className="liquid-glass-gpa-number">
-                        {projectedGPA && projectedGPA > 0 ? projectedGPA.toFixed(2) : '--'}
-                      </div>
-                      <div className="liquid-glass-gpa-max">based on locked and expected grades</div>
-                      <div className="liquid-glass-gpa-note">
-                        {enteredFinalGradeCount} of {selectedSubjects.length} subjects locked in
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="liquid-glass-card liquid-glass-future-card">
-                  <div className="liquid-glass-card-header">
-                    <div className="liquid-glass-card-title">
-                      <Target className="liquid-glass-card-icon" />
-                      Where to Improve
-                    </div>
-                    <p className="liquid-glass-card-description">
-                      Biggest GPA gains from grades that can still improve
-                    </p>
-                  </div>
-                  <div className="liquid-glass-card-content">
-                    {futureSuggestions.possible ? (
-                      <div className="liquid-glass-future-suggestion-list">
-                        {futureSuggestions.suggestions.map((suggestion, idx) => (
-                          <div key={`${suggestion.subject}-${suggestion.term}-${idx}`} className="liquid-glass-future-suggestion">
-                            <div className="liquid-glass-future-suggestion-header">
-                              <span className="liquid-glass-future-subject">{suggestion.subject}</span>
-                              <span className="liquid-glass-future-term">{suggestion.term}</span>
-                            </div>
-                            <div className="liquid-glass-future-suggestion-body">
-                              <span className="liquid-glass-future-grade">{`${suggestion.from} -> ${suggestion.to}`}</span>
-                              <span className="liquid-glass-future-impact">+{suggestion.impact} GPA</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="liquid-glass-muted-text">
-                        {futureSuggestions.reason === 'needs-expected-grades'
-                          ? 'Add expected grades for any unfinished terms to unlock personalized improvement ideas.'
-                          : futureSuggestions.reason === 'maxed-or-locked'
-                          ? 'All counted grades are already locked at the best available improvement points.'
-                          : 'Enter grades or expectations to unlock personalized improvement ideas.'}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="liquid-glass-card liquid-glass-requirements-card">
-                  <div className="liquid-glass-card-header">
-                    <div className="liquid-glass-card-title">
-                      <Trophy className="liquid-glass-card-icon" />
-                      Target GPA Check
-                    </div>
-                    <p className="liquid-glass-card-description">
-                      See how your predicted GPA compares to each goal and adjust expectations accordingly
-                    </p>
-                  </div>
-                  <div className="liquid-glass-card-content">
-                    {renderCustomTargetInput()}
-
-                    <div className="liquid-glass-requirements">
-                      {targetGPAs.map(targetGPA => {
-                        const hasProjection = projectedGPA !== null && projectedGPA > 0
-                        const onTrack = hasProjection && projectedGPA >= targetGPA
-                        const needsMoreData = hasPendingFutureTerms && !hasAnyExpectedFutureGrades
-                        const incompleteData = hasPendingFutureTerms && hasAnyExpectedFutureGrades && !hasCompleteExpectedFutureGrades
-                        const badgeClass = !hasProjection
-                          ? 'liquid-glass-badge-warning'
-                          : onTrack
-                          ? 'liquid-glass-badge-success'
-                          : needsMoreData || incompleteData
-                          ? 'liquid-glass-badge-warning'
-                          : 'liquid-glass-badge-error'
-                        const badgeLabel = !hasProjection
-                          ? 'Need Data'
-                          : onTrack
-                          ? 'On Track'
-                          : needsMoreData || incompleteData
-                          ? 'Need Data'
-                          : 'Needs Adjustment'
-                        const shortfall = hasProjection && projectedGPA < targetGPA
-                          ? targetGPA - projectedGPA
-                          : 0
-
-                        let statusMessage = ''
-                        if (!hasProjection) {
-                          if (needsMoreData) {
-                            statusMessage = 'Add expected grades for the remaining terms to generate a prediction for this target.'
-                          } else if (incompleteData) {
-                            statusMessage = 'Finish entering expected grades for all remaining terms to sharpen this projection.'
-                          } else if (!hasPendingFutureTerms) {
-                            statusMessage = 'Enter grades or expectations to start projecting against this goal.'
-                          } else {
-                            statusMessage = 'Add a bit more data to start projecting against this target.'
-                          }
-                        } else if (onTrack) {
-                          statusMessage = `Projected GPA of ${projectedGPA.toFixed(2)} already meets this target.`
-                        } else {
-                          statusMessage = `Projected GPA is ${projectedGPA.toFixed(2)}, about ${shortfall.toFixed(2)} below this target.`
-                          if (incompleteData) {
-                            statusMessage += ' Completing the remaining expected grades will improve accuracy.'
-                          }
-                        }
-
-                        const showSuggestions = !onTrack && futureSuggestions.possible
-
-                        return (
-                          <div key={`future-target-${targetGPA}`} className="liquid-glass-requirement-item">
-                            <div className="liquid-glass-requirement-header">
-                              <h4 className="liquid-glass-requirement-title">Target GPA: {targetGPA}</h4>
-                              <div className="liquid-glass-requirement-header-actions">
-                                <div className={`liquid-glass-requirement-badge ${badgeClass}`}>
-                                  {badgeLabel}
-                                </div>
-                                {!([13.5, 14.0, 14.5].includes(targetGPA)) && (
-                                  <button
-                                    type="button"
-                                    className="liquid-glass-remove-target-button"
-                                    title="Remove target GPA"
-                                    aria-label={`Remove target GPA ${targetGPA}`}
-                                    onClick={() => setTargetGPAs(targetGPAs.filter(target => target !== targetGPA))}
-                                  >
-                                    <X aria-hidden="true" />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-
-                            <p className={`liquid-glass-requirement-message ${onTrack ? 'liquid-glass-success-message' : needsMoreData || !hasProjection ? 'liquid-glass-warning-message' : 'liquid-glass-error-message'}`}>
-                              {statusMessage}
-                            </p>
-
-                            {showSuggestions && (
-                              <div className="liquid-glass-requirement-details">
-                                <p className="liquid-glass-requirement-label">Try adjusting these expectations:</p>
-                                <div className="liquid-glass-requirement-grades">
-                                  {futureSuggestions.suggestions.map((suggestion, idx) => (
-                                    <div key={`${suggestion.subject}-${suggestion.term}-${idx}`} className="liquid-glass-requirement-grade">
-                                      <span className="liquid-glass-requirement-subject">{suggestion.subject} - {suggestion.term}</span>
-                                      <div className="liquid-glass-improvement-badge">
-                                        {`${suggestion.from} -> ${suggestion.to} (+${suggestion.impact} GPA)`}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        {targetGPADialog}
-
-        {/* Save to Google Doc Dialog */}
-        <Dialog open={showSaveDialog} onOpenChange={handleSaveDialogOpenChange}>
-          <DialogContent className="liquid-glass-dialog">
-            <DialogHeader>
-              <DialogTitle className="liquid-glass-dialog-title">
-                <Save className="liquid-glass-dialog-icon" />
-                Save GPA
-              </DialogTitle>
-              <DialogDescription className="liquid-glass-dialog-description">
-                Save this GPA snapshot to Google Docs with your name and year level.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="liquid-glass-dialog-content">
-              <div className="liquid-glass-input-group">
-                <label className="liquid-glass-input-label">Your Name</label>
-                <Input
-                  value={studentName}
-                  onChange={(e) => setStudentName(e.target.value)}
-                  placeholder="Enter your name..."
-                  className="liquid-glass-input"
-                />
-              </div>
-              <div className="liquid-glass-input-group">
-                <label className="liquid-glass-input-label">Year Level</label>
-                <Select value={studentYearLevel} onValueChange={setStudentYearLevel}>
-                  <SelectTrigger className="liquid-glass-select">
-                    <SelectValue placeholder="Select year" />
-                  </SelectTrigger>
-                  <SelectContent className="liquid-glass-select-content">
-                    {['Year 7', 'Year 8', 'Year 9', 'Year 10', 'Year 11', 'Year 12'].map(year => (
-                      <SelectItem key={year} value={year} className="liquid-glass-select-item">
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="liquid-glass-gpa-summary">
-                <p className="liquid-glass-summary-text">
-                  <span>{studentYearLevel}</span>
-                  <span>{currentTerm}</span>
-                  <strong>{gpa?.toFixed(2) || '--'} GPA</strong>
-                </p>
-                <p className="liquid-glass-summary-subtext">
-                  {enteredFinalGradeCount} of {selectedSubjects.length} subjects counted in this save.
-                </p>
-              </div>
-              {saveErrorMessage ? (
-                <div className="liquid-glass-save-error" role="alert">
-                  {saveErrorMessage}
-                </div>
-              ) : null}
-            </div>
-            <DialogFooter className="liquid-glass-dialog-footer">
-              <Button
-                onClick={handleSaveDialogClose}
-                variant="outline"
-                className="liquid-glass-dialog-button liquid-glass-dialog-cancel"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={saveSnapshotToGoogleDoc}
-                disabled={isSaving || !studentName.trim()}
-                className="liquid-glass-dialog-button liquid-glass-dialog-save"
-              >
-                {isSaving ? (
-                  <>
-                    <div className="liquid-glass-spinner"></div>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="liquid-glass-button-icon-left" />
-                    Save GPA
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+    <div className="gpa-final-app" style={appThemeStyle}>
+      {currentStep === 'selection' ? renderSelectionScreen() : null}
+      {currentStep === 'target' ? renderTargetScreen() : null}
+      {currentStep === 'gradeEntry' ? renderGradeEntryScreen() : null}
+      {currentStep === 'results' ? renderResultsScreen() : null}
+      {renderSettings()}
     </div>
   )
 }
