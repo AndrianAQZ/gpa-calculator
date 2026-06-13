@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Calculator, Check, ChevronRight, Palette, RotateCcw, Save, Settings, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Check, ChevronRight, RotateCcw, Save, Settings, X } from 'lucide-react'
 import '../App.css'
 
 const CORE_SUBJECTS = ['English', 'Health and Physical Education', 'History', 'Mathematics', 'Science']
@@ -63,15 +63,15 @@ const LOCAL_STORAGE_KEY = 'gpa-calculator-state-v1'
 const LOCAL_GPA_SAVES_KEY = 'gpa-calculator-saved-gpas-v1'
 const THEME_STORAGE_KEY = 'gpa-calculator-theme-v1'
 const DEFAULT_THEME = {
-  primary: '#2563eb',
-  primaryStrong: '#1746a2',
-  background: '#f3f6fb',
+  primary: '#3d6b4e',
+  primaryStrong: '#2a4d36',
+  background: '#f5f0eb',
   surface: '#ffffff',
-  text: '#172033',
-  accent: '#0f6f43'
+  text: '#1a1612',
+  accent: '#3d6b4e'
 }
 const THEME_PRESETS = {
-  Focus: DEFAULT_THEME,
+  Forest: DEFAULT_THEME,
   Ocean: {
     primary: '#0f766e',
     primaryStrong: '#115e59',
@@ -160,6 +160,28 @@ const getOptionalTargetFromPersisted = (parsed) => {
   return null
 }
 
+const hexToRgb = (hex) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null
+}
+
+const linearize = (c) => {
+  const s = c / 255
+  return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+}
+
+const relativeLuminance = (hex) => {
+  const rgb = hexToRgb(hex)
+  if (!rgb) return 1
+  return 0.2126 * linearize(rgb.r) + 0.7152 * linearize(rgb.g) + 0.0722 * linearize(rgb.b)
+}
+
+const contrastRatio = (a, b) => {
+  const la = relativeLuminance(a), lb = relativeLuminance(b)
+  const lighter = Math.max(la, lb), darker = Math.min(la, lb)
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
 const isInappropriateName = (name) => {
   const lowerName = name.toLowerCase().trim()
   const inappropriateWords = [
@@ -212,7 +234,6 @@ function App() {
       return DEFAULT_THEME
     }
   })
-  const saveCardRef = useRef(null)
 
   const selectedElectives = useMemo(
     () => selectedSubjects.filter(subject => !CORE_SUBJECTS.includes(subject)),
@@ -542,7 +563,30 @@ function App() {
   }
 
   const handleThemeChange = (key, value) => {
-    setTheme(prev => ({ ...prev, [key]: value }))
+    setTheme(prev => {
+      const next = { ...prev, [key]: value }
+
+      // Enforce minimum contrast: text vs background must be >= 3:1
+      if (key === 'text') {
+        const ratio = contrastRatio(value, next.background)
+        if (ratio < 3) return prev
+      }
+      if (key === 'background') {
+        const ratio = contrastRatio(next.text, value)
+        if (ratio < 3) return prev
+      }
+      if (key === 'surface') {
+        const ratio = contrastRatio(next.text, value)
+        if (ratio < 3) return prev
+      }
+      if (key === 'primary') {
+        // White text on primary must be >= 3:1
+        const ratio = contrastRatio('#ffffff', value)
+        if (ratio < 3) return prev
+      }
+
+      return next
+    })
   }
 
   const handleSettingsTargetSave = () => {
@@ -677,7 +721,7 @@ function App() {
   )
 
   const renderGradeSummary = (showOnlyEntered = false) => (
-    <div className="gpa-grade-list">
+    <div className="gpa-grade-list" aria-live="polite" aria-atomic="false">
       {selectedSubjects
         .filter(subject => !showOnlyEntered || finalGrades[subject])
         .map(subject => (
@@ -716,29 +760,50 @@ function App() {
   }
 
   const renderSelectionScreen = () => (
-    <main className="gpa-final-page">
-      {renderTopBar('')}
+    <main className="gpa-final-page" id="main-content">
+      {renderTopBar('Choose your subjects')}
       <section className={`gpa-selection-panel${isTargetTransitioning ? ' is-transitioning' : ''}`}>
-        <h1>Choose your electives</h1>
-        <div className="gpa-selected-count">{selectedElectiveCount} of {MAX_ELECTIVES} selected</div>
-        <div className="gpa-elective-grid" aria-label="Electives">
-          {ELECTIVE_SUBJECTS.map(subject => {
-            const isSelected = selectedSubjects.includes(subject)
-            const isDisabled = !isSelected && selectedElectiveCount >= MAX_ELECTIVES
-            return (
-              <button
-                type="button"
-                key={subject}
-                className={`gpa-elective-button${isSelected ? ' is-selected' : ''}`}
-                onClick={() => handleElectiveToggle(subject)}
-                disabled={isDisabled}
-                aria-pressed={isSelected}
-              >
-                <span>{subject}</span>
-                {isSelected ? <Check aria-hidden="true" /> : null}
-              </button>
-            )
-          })}
+        <div className="gpa-subject-groups">
+          <div className="gpa-subject-group">
+            <h2 className="gpa-subject-group-heading">Core subjects</h2>
+            <p className="gpa-subject-group-note">These are always included in your GPA calculation.</p>
+            <div className="gpa-core-list">
+              {CORE_SUBJECTS.map((subject, index) => (
+                <div key={subject} className="gpa-core-item" style={{ animationDelay: `${index * 25}ms` }}>
+                  <span className="gpa-core-name">{subject}</span>
+                  <span className="gpa-core-weight">{CORE_SUBJECT_WEIGHTS[subject]}x weight</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="gpa-subject-group">
+            <div className="gpa-subject-group-header-row">
+              <div>
+                <h2 className="gpa-subject-group-heading">Electives</h2>
+                <p className="gpa-subject-group-note">Choose up to {MAX_ELECTIVES}. {selectedElectiveCount} of {MAX_ELECTIVES} selected.</p>
+              </div>
+            </div>
+            <div className="gpa-elective-grid" aria-label="Electives">
+              {ELECTIVE_SUBJECTS.map((subject, index) => {
+                const isSelected = selectedSubjects.includes(subject)
+                const isDisabled = !isSelected && selectedElectiveCount >= MAX_ELECTIVES
+                return (
+                  <button
+                    type="button"
+                    key={subject}
+                    className={`gpa-elective-button${isSelected ? ' is-selected' : ''}`}
+                    onClick={() => handleElectiveToggle(subject)}
+                    disabled={isDisabled}
+                    aria-pressed={isSelected}
+                    style={{ animationDelay: `${index * 20 + 60}ms` }}
+                  >
+                    <span>{subject}</span>
+                    {isSelected ? <Check aria-hidden="true" /> : null}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
         {persistenceWarning ? (
           <p className="gpa-quiet-warning">Progress may not persist because browser storage was blocked.</p>
@@ -748,11 +813,11 @@ function App() {
   )
 
   const renderTargetScreen = () => (
-    <main className="gpa-final-page">
+    <main className="gpa-final-page" id="main-content">
       {renderTopBar('')}
       <section className="gpa-target-stage" aria-label="Optional target GPA">
         <div className="gpa-target-card">
-          <h1>Target GPA</h1>
+          <h1 id="target-gpa-label">Target GPA</h1>
           <input
             type="number"
             min={MIN_GPA_VALUE}
@@ -762,6 +827,7 @@ function App() {
             onChange={(event) => setTargetInput(event.target.value)}
             placeholder="14"
             className="gpa-target-input"
+            aria-labelledby="target-gpa-label"
           />
           <div className="gpa-target-actions">
             <button type="button" className="gpa-secondary-action" onClick={skipTargetAndContinue}>Skip</button>
@@ -773,47 +839,43 @@ function App() {
   )
 
   const renderGradeEntryScreen = () => (
-    <main className="gpa-final-page">
+    <main className="gpa-final-page" id="main-content">
       {renderTopBar('Enter your grades')}
       <section className="gpa-grade-card gpa-card">
-        <div className="gpa-grade-workspace">
-          <div className="gpa-grade-left">
-            <div className="gpa-subject-heading-row">
-              <h1>{activeSubject}</h1>
-              <span>{activeSubjectIndex + 1} of {selectedSubjects.length}</span>
-            </div>
-            <div className="gpa-grade-button-table" aria-label={`Grade buttons for ${activeSubject}`}>
-              {GRADE_ROWS.map(row => (
-                <div className="gpa-grade-button-row" key={row.join('-')}>
-                  {row.map(grade => (
-                    <button
-                      type="button"
-                      key={grade}
-                      className={`gpa-grade-button${selectedGrade === grade ? ' is-selected' : ''}`}
-                      onClick={() => handleGradeSelect(activeSubject, grade)}
-                      aria-pressed={selectedGrade === grade}
-                    >
-                      {grade}
-                    </button>
-                  ))}
-                </div>
+        <div className="gpa-subject-heading-row">
+          <h1 key={activeSubject}>{activeSubject}</h1>
+          <span>{activeSubjectIndex + 1} of {selectedSubjects.length}</span>
+        </div>
+        <div key={selectedGrade || 'empty'} className={`gpa-selected-grade-display${selectedGrade ? ' gpa-grade-just-selected' : ''}`}>
+          {selectedGrade || <span className="gpa-no-grade">Tap a grade below</span>}
+        </div>
+        <div className="gpa-grade-button-table" aria-label={`Grade buttons for ${activeSubject}`}>
+          {GRADE_ROWS.map((row, rowIndex) => (
+            <div className="gpa-grade-button-row" key={row.join('-')}>
+              {row.map((grade, colIndex) => (
+                <button
+                  type="button"
+                  key={grade}
+                  className={`gpa-grade-button${selectedGrade === grade ? ' is-selected' : ''}`}
+                  onClick={() => handleGradeSelect(activeSubject, grade)}
+                  aria-pressed={selectedGrade === grade}
+                  style={{ animationDelay: `${(rowIndex * 3 + colIndex) * 25}ms` }}
+                >
+                  {grade}
+                </button>
               ))}
             </div>
-          </div>
-          <aside className="gpa-grade-right">
-            <span>Selected grade</span>
-            <strong>{selectedGrade || '-'}</strong>
-            <button
-              type="button"
-              className="gpa-next-subject-button"
-              onClick={handleNextSubject}
-              disabled={!selectedGrade}
-            >
-              {activeSubjectIndex === selectedSubjects.length - 1 ? 'See GPA' : 'Next subject'}
-              <ChevronRight aria-hidden="true" />
-            </button>
-          </aside>
+          ))}
         </div>
+        <button
+          type="button"
+          className="gpa-next-subject-button"
+          onClick={handleNextSubject}
+          disabled={!selectedGrade}
+        >
+          {activeSubjectIndex === selectedSubjects.length - 1 ? 'See GPA' : 'Next subject'}
+          <ChevronRight aria-hidden="true" />
+        </button>
       </section>
       <section className={`gpa-lower-grid${targetGPA ? '' : ' single'}`}>
         <section className="gpa-card gpa-lower-card">
@@ -826,51 +888,57 @@ function App() {
   )
 
   const renderResultsScreen = () => (
-    <main className="gpa-final-page">
+    <main className="gpa-final-page" id="main-content">
       {renderTopBar('Your GPA')}
       <section className="gpa-card gpa-result-card">
-        <div className="gpa-result-number">{gpa && gpa > 0 ? gpa.toFixed(2) : '--'}</div>
-        <div className="gpa-result-subtitle">
-          {closestGpaGrade ? `Closest grade: ${closestGpaGrade}` : 'Enter grades to calculate your GPA'}
-        </div>
-        {targetGPA ? (
-          <div className={`gpa-target-comparison ${gpa >= targetGPA ? 'is-met' : 'is-short'}`}>
-            {gpa >= targetGPA
-              ? `Meets target ${formatGpa(targetGPA)}`
-              : `${(targetGPA - (gpa || 0)).toFixed(2)} below target ${formatGpa(targetGPA)}`}
+        <div className="gpa-result-layout">
+          <div className="gpa-result-main">
+            <div className="gpa-result-number" aria-live="polite" aria-atomic="true">{gpa && gpa > 0 ? gpa.toFixed(2) : '--'}</div>
+            <div className="gpa-result-subtitle">
+              {closestGpaGrade ? `Closest grade: ${closestGpaGrade}` : 'Enter grades to calculate your GPA'}
+            </div>
+            {targetGPA ? (
+              <div className={`gpa-target-comparison ${gpa >= targetGPA ? 'is-met' : 'is-short'}`}>
+                {gpa >= targetGPA
+                  ? `Meets target ${formatGpa(targetGPA)}`
+                  : `${(targetGPA - (gpa || 0)).toFixed(2)} below target ${formatGpa(targetGPA)}`}
+              </div>
+            ) : null}
           </div>
-        ) : null}
-        <div className="gpa-result-actions">
-          <button type="button" className="gpa-primary-action" onClick={() => saveCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
-            <Save aria-hidden="true" />
-            Save result
-          </button>
-          <button type="button" className="gpa-secondary-action" onClick={() => setCurrentStep('gradeEntry')}>Edit grades</button>
-          <button type="button" className="gpa-secondary-action" onClick={() => setCurrentStep('selection')}>Change electives</button>
+          <div className="gpa-result-breakdown">
+            <h3>Subject contributions</h3>
+            <div className="gpa-grade-list">
+              {selectedSubjects.map(subject => {
+                const grade = finalGrades[subject]
+                const weight = SUBJECTS[subject]
+                const weightedPoints = grade ? (grade.points * weight) : 0
+                return (
+                  <div className="gpa-grade-row" key={subject}>
+                    <span className="gpa-grade-subject">{subject}</span>
+                    <span className="gpa-grade-column">{grade ? grade.grade : 'Not entered'}</span>
+                    <span className="gpa-grade-weight">{weight}x</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
-      </section>
-      <section className="gpa-lower-grid">
-        <section className="gpa-card gpa-lower-card">
-          <h2>Grade summary</h2>
-          {renderGradeSummary(true)}
-        </section>
-        <section className="gpa-card gpa-lower-card" ref={saveCardRef}>
-          <h2>Save result</h2>
+        <div className="gpa-result-save-section">
           <div className="gpa-save-form">
             <label>
-              Student name
+              <span>Student name</span>
               <input
                 value={studentName}
                 onChange={(event) => setStudentName(event.target.value)}
-                placeholder=""
+                placeholder="e.g. Alex Chen"
               />
             </label>
             <label>
-              Year level
+              <span>Year level</span>
               <input
                 value={studentYearLevel}
                 onChange={(event) => setStudentYearLevel(event.target.value)}
-                placeholder=""
+                placeholder="e.g. Year 11"
               />
             </label>
             <button
@@ -879,11 +947,21 @@ function App() {
               onClick={saveSnapshotToGoogleDoc}
               disabled={isSaving}
             >
-              {isSaving ? 'Saving...' : 'Save result'}
+              {isSaving ? <><span className="gpa-spinner" /> Saving...</> : 'Save result'}
             </button>
           </div>
           {saveStatusMessage ? <p className="gpa-save-status">{saveStatusMessage}</p> : null}
           {saveErrorMessage ? <p className="gpa-save-error" role="alert">{saveErrorMessage}</p> : null}
+        </div>
+        <div className="gpa-result-actions">
+          <button type="button" className="gpa-secondary-action" onClick={() => setCurrentStep('gradeEntry')}>Edit grades</button>
+          <button type="button" className="gpa-secondary-action" onClick={() => setCurrentStep('selection')}>Change electives</button>
+        </div>
+      </section>
+      <section className="gpa-lower-grid">
+        <section className="gpa-card gpa-lower-card" style={{ animationDelay: '100ms' }}>
+          <h2>Grade summary</h2>
+          {renderGradeSummary(true)}
         </section>
       </section>
     </main>
@@ -961,6 +1039,7 @@ function App() {
 
   return (
     <div className="gpa-final-app" style={appThemeStyle}>
+      <a href="#main-content" className="gpa-skip-link">Skip to main content</a>
       {currentStep === 'selection' ? renderSelectionScreen() : null}
       {currentStep === 'target' ? renderTargetScreen() : null}
       {currentStep === 'gradeEntry' ? renderGradeEntryScreen() : null}

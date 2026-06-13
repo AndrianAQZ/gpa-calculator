@@ -1,25 +1,25 @@
 :root {
-  --bg: #f3f6fb;
+  --bg: #f5f0eb;
   --surface: #ffffff;
-  --surface-soft: #f8fafc;
-  --surface-blue: #eef6ff;
-  --text: #172033;
-  --text-muted: #5d6678;
-  --text-soft: #667085;
-  --line: #d9e1ee;
-  --line-strong: #b9c6d8;
-  --primary: #2563eb;
-  --primary-strong: #1746a2;
-  --primary-soft: #dbeafe;
-  --success: #0f6f43;
-  --success-soft: #dff7ea;
-  --warning: #8a4f00;
-  --warning-soft: #fff0cf;
-  --danger: #bc2b2b;
-  --danger-soft: #ffe1e1;
-  --violet: #5b5bd6;
-  --shadow: 0 18px 44px rgba(26, 40, 67, 0.11);
-  --shadow-soft: 0 8px 22px rgba(26, 40, 67, 0.07);
+  --surface-soft: #f9f6f2;
+  --surface-blue: #f5f0eb;
+  --text: #1a1612;
+  --text-muted: #6b5e52;
+  --text-soft: #8a7d71;
+  --line: #ddd5cc;
+  --line-strong: #c4bab0;
+  --primary: #3d6b4e;
+  --primary-strong: #2a4d36;
+  --primary-soft: #e8f0eb;
+  --success: #3d6b4e;
+  --success-soft: #e8f0eb;
+  --warning: #8a6d2b;
+  --warning-soft: #fdf4e0;
+  --danger: #a83232;
+  --danger-soft: #fde8e8;
+  --violet: #5b4d8a;
+  --shadow: 0 18px 44px rgba(26, 22, 18, 0.1);
+  --shadow-soft: 0 8px 22px rgba(26, 22, 18, 0.06);
   --radius: 8px;
 }
 
@@ -1841,35 +1841,36 @@ button {
 
 /* 2026 dashboard refresh */
 :root {
-  --bg: #edf3f7;
+  --bg: #f5f0eb;
   --surface: #ffffff;
-  --surface-soft: #f6f9fb;
-  --surface-blue: #eef7fb;
-  --text: #111827;
-  --text-muted: #586273;
-  --text-soft: #718096;
-  --line: #d9e4ea;
-  --line-strong: #b9cad4;
-  --primary: #0f8c9a;
-  --primary-strong: #075e68;
-  --primary-soft: #dff6f8;
-  --success: #11784b;
-  --success-soft: #e2f7ec;
-  --warning: #946200;
-  --warning-soft: #fff2cc;
-  --danger: #ba2f35;
-  --danger-soft: #ffe5e6;
-  --violet: #2f5da8;
-  --shadow: 0 24px 70px rgba(27, 45, 58, 0.16);
-  --shadow-soft: 0 12px 32px rgba(27, 45, 58, 0.08);
+  --surface-soft: #f9f6f2;
+  --surface-blue: #f5f0eb;
+  --text: #1a1612;
+  --text-muted: #6b5e52;
+  --text-soft: #8a7d71;
+  --line: #ddd5cc;
+  --line-strong: #c4bab0;
+  --primary: #3d6b4e;
+  --primary-strong: #2a4d36;
+  --primary-soft: #e8f0eb;
+  --success: #3d6b4e;
+  --success-soft: #e8f0eb;
+  --warning: #8a6d2b;
+  --warning-soft: #fdf4e0;
+  --danger: #a83232;
+  --danger-soft: #fde8e8;
+  --violet: #5b4d8a;
+  --shadow: 0 18px 44px rgba(26, 22, 18, 0.1);
+  --shadow-soft: 0 8px 22px rgba(26, 22, 18, 0.06);
   --radius: 8px;
 }
 
 body {
-  background:
-    radial-gradient(circle at 12% 0%, rgba(15, 140, 154, 0.18), transparent 30rem),
-    radial-gradient(circle at 86% 12%, rgba(242, 171, 64, 0.16), transparent 26rem),
-    var(--bg);
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Aptos", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .liquid-glass-app {
@@ -4222,26 +4223,89 @@ body {
 }
 
 /* Final minimal GPA calculator UI */
+.gpa-skip-link {
+  position: absolute;
+  top: -100px;
+  left: 8px;
+  z-index: 100;
+  padding: 8px 16px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 0 0 8px 8px;
+  text-decoration: none;
+}
+
+.gpa-skip-link:focus {
+  top: 0;
+}
+
+/* Motion system */
+@keyframes gpaPageIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gpaCardIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gpaTargetIn {
+  from { opacity: 0; transform: scale(0.975); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes gpaFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes gpaSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gpaScaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes gpaCheckPop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes gpaGradeFlash {
+  0% { color: var(--primary); transform: scale(1.08); }
+  100% { color: var(--primary-strong); transform: scale(1); }
+}
+
 .gpa-final-app {
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
-  --gpa-border: color-mix(in srgb, var(--text) 18%, transparent);
-  --gpa-border-strong: color-mix(in srgb, var(--text) 28%, transparent);
-  --gpa-muted: color-mix(in srgb, var(--text) 72%, transparent);
-  --gpa-soft-muted: color-mix(in srgb, var(--text) 58%, transparent);
+  --gpa-border: color-mix(in srgb, var(--text) 16%, transparent);
+  --gpa-border-strong: color-mix(in srgb, var(--text) 26%, transparent);
+  --gpa-muted: color-mix(in srgb, var(--text) 68%, transparent);
+  --gpa-soft-muted: color-mix(in srgb, var(--text) 54%, transparent);
   --gpa-card-bg: var(--surface);
   --gpa-control-bg: color-mix(in srgb, var(--surface) 92%, var(--bg) 8%);
   --gpa-control-bg-hover: color-mix(in srgb, var(--surface) 82%, var(--primary) 18%);
   --gpa-control-text: var(--text);
-  --gpa-shadow: 0 10px 24px rgba(25, 42, 70, 0.08);
+  --gpa-shadow: 0 10px 24px rgba(26, 22, 18, 0.08);
 }
 
 .gpa-final-page {
   width: min(1120px, calc(100% - 40px));
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0 auto;
   padding: 18px 0 34px;
+  padding: max(18px, env(safe-area-inset-top)) 0 max(34px, env(safe-area-inset-bottom));
+  animation: gpaPageIn 250ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
 .gpa-final-topbar {
@@ -4268,7 +4332,17 @@ body {
   border-radius: 8px;
   background: var(--gpa-card-bg);
   color: var(--text);
-  box-shadow: 0 6px 16px rgba(25, 42, 70, 0.06);
+  box-shadow: 0 6px 16px rgba(26, 22, 18, 0.06);
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.gpa-icon-button:hover {
+  border-color: var(--gpa-border-strong);
+  background: var(--gpa-control-bg);
+}
+
+.gpa-icon-button:active {
+  transform: scale(0.96);
 }
 
 .gpa-icon-button svg {
@@ -4278,9 +4352,7 @@ body {
 
 .gpa-selection-panel {
   display: grid;
-  justify-items: center;
-  gap: 18px;
-  padding-top: 48px;
+  gap: 24px;
   transition: opacity 280ms cubic-bezier(.2, .8, .2, 1), transform 280ms cubic-bezier(.2, .8, .2, 1);
 }
 
@@ -4304,8 +4376,67 @@ body {
   font-weight: 650;
 }
 
+.gpa-subject-groups {
+  display: grid;
+  gap: 28px;
+}
+
+.gpa-subject-group {
+  display: grid;
+  gap: 12px;
+}
+
+.gpa-subject-group-header-row {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.gpa-subject-group-heading {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 760;
+  color: var(--text);
+}
+
+.gpa-subject-group-note {
+  margin: 4px 0 0;
+  color: var(--gpa-muted);
+  font-size: 14px;
+}
+
+.gpa-core-list {
+  display: grid;
+  gap: 6px;
+}
+
+.gpa-core-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--gpa-border);
+  border-left: 3px solid var(--primary);
+  border-radius: 8px;
+  background: var(--gpa-card-bg);
+  animation: gpaCardIn 200ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.gpa-core-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.gpa-core-weight {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--gpa-muted);
+}
+
 .gpa-elective-grid {
-  width: min(820px, 100%);
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
@@ -4325,19 +4456,31 @@ body {
   font-size: 14px;
   font-weight: 680;
   text-align: left;
-  box-shadow: 0 8px 22px rgba(25, 42, 70, 0.06);
+  box-shadow: 0 8px 22px rgba(26, 22, 18, 0.06);
+  transition: border-color 120ms ease, background 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+  animation: gpaCardIn 200ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
 .gpa-elective-button:hover:not(:disabled),
 .gpa-grade-button:hover {
-  border-color: color-mix(in srgb, var(--primary) 62%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 50%, transparent);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(26, 22, 18, 0.08);
 }
 
 .gpa-elective-button.is-selected,
 .gpa-grade-button.is-selected {
   border-color: var(--primary);
-  background: color-mix(in srgb, var(--primary) 22%, var(--surface));
+  background: color-mix(in srgb, var(--primary) 14%, var(--surface));
   color: var(--text);
+}
+
+.gpa-elective-button.is-selected {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.gpa-elective-button.is-selected svg {
+  animation: gpaCheckPop 200ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
 .gpa-elective-button:disabled {
@@ -4352,9 +4495,9 @@ body {
 }
 
 .gpa-target-stage {
-  min-height: calc(100vh - 120px);
   display: grid;
-  place-items: center;
+  gap: 18px;
+  padding-top: 24px;
 }
 
 .gpa-target-card {
@@ -4365,19 +4508,8 @@ body {
   border: 1px solid var(--gpa-border);
   border-radius: 8px;
   background: var(--gpa-card-bg);
-  box-shadow: 0 18px 44px rgba(25, 42, 70, 0.11);
+  box-shadow: 0 18px 44px rgba(26, 22, 18, 0.11);
   animation: gpaTargetIn 290ms cubic-bezier(.2, .8, .2, 1) both;
-}
-
-@keyframes gpaTargetIn {
-  from {
-    opacity: 0;
-    transform: scale(0.975);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
 }
 
 .gpa-target-input,
@@ -4428,6 +4560,17 @@ body {
   border: 1px solid var(--primary);
   background: var(--primary);
   color: #fff;
+  transition: background 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.gpa-primary-action:hover:not(:disabled) {
+  background: var(--primary-strong);
+  box-shadow: 0 4px 12px rgba(61, 107, 78, 0.25);
+  transform: translateY(-1px);
+}
+
+.gpa-primary-action:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .gpa-primary-action:disabled {
@@ -4455,23 +4598,14 @@ body {
   border-radius: 8px;
   background: var(--gpa-card-bg);
   box-shadow: var(--gpa-shadow);
+  animation: gpaCardIn 200ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
 .gpa-grade-card {
-  padding: 18px 20px;
-}
-
-.gpa-grade-workspace {
+  padding: 24px;
   display: grid;
-  grid-template-columns: minmax(560px, 1fr) 220px;
   gap: 20px;
-  align-items: center;
-}
-
-.gpa-grade-left {
-  display: grid;
-  grid-template-rows: auto auto;
-  gap: 10px;
+  animation: gpaCardIn 200ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
 .gpa-subject-heading-row {
@@ -4479,14 +4613,15 @@ body {
   align-items: end;
   justify-content: space-between;
   gap: 20px;
-  width: min(620px, 100%);
 }
 
 .gpa-subject-heading-row h1 {
   margin: 0;
-  font-size: 24px;
+  font-size: 26px;
   line-height: 1.15;
-  font-weight: 780;
+  font-weight: 820;
+  color: var(--text);
+  animation: gpaFadeIn 150ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
 .gpa-subject-heading-row span {
@@ -4496,57 +4631,48 @@ body {
   font-weight: 700;
 }
 
+.gpa-no-grade {
+  color: var(--gpa-muted);
+  font-size: 15px;
+  font-weight: 600;
+}
+
 .gpa-grade-button-table {
-  width: min(620px, 100%);
   display: grid;
-  gap: 7px;
+  gap: 8px;
 }
 
 .gpa-grade-button-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 7px;
+  gap: 8px;
 }
 
 .gpa-grade-button {
-  height: 38px;
-  border: 1px solid var(--gpa-border-strong);
+  height: 46px;
+  border: 1.5px solid var(--gpa-border-strong);
   border-radius: 8px;
   background: var(--gpa-control-bg);
   color: var(--gpa-control-text);
   font-size: 15px;
   font-weight: 780;
+  transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+  animation: gpaCardIn 200ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
 .gpa-grade-button:hover {
+  border-color: color-mix(in srgb, var(--primary) 50%, transparent);
   background: var(--gpa-control-bg-hover);
 }
 
-.gpa-grade-right {
-  display: grid;
-  align-content: center;
-  gap: 10px;
-  padding-left: 18px;
-  border-left: 1px solid var(--gpa-border);
-}
-
-.gpa-grade-right span {
-  color: var(--gpa-muted);
-  font-size: 13px;
-  font-weight: 720;
-}
-
-.gpa-grade-right strong {
-  min-height: 62px;
-  display: grid;
-  place-items: center;
-  font-size: 46px;
-  line-height: 1;
-  color: var(--text);
+.gpa-grade-button.is-selected {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 14%, var(--surface));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 18%, transparent);
 }
 
 .gpa-next-subject-button {
-  min-height: 52px;
+  min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4555,12 +4681,18 @@ body {
   border-radius: 8px;
   background: var(--primary);
   color: #fff;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 780;
+  transition: background 120ms ease, box-shadow 120ms ease;
+}
+
+.gpa-next-subject-button:hover:not(:disabled) {
+  background: var(--primary-strong);
+  box-shadow: 0 4px 12px rgba(61, 107, 78, 0.25);
 }
 
 .gpa-next-subject-button:disabled {
-  opacity: 0.72;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -4629,7 +4761,14 @@ body {
   grid-template-columns: minmax(0, 1fr) 5.75rem;
   align-items: center;
   gap: 10px;
-  min-height: 25px;
+  min-height: 32px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 100ms ease;
+}
+
+.gpa-grade-row:hover {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
 }
 
 .gpa-grade-subject {
@@ -4654,19 +4793,84 @@ body {
   font-weight: 690;
 }
 
+.gpa-grade-weight {
+  width: 3rem;
+  justify-self: end;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--gpa-muted);
+}
+
+/* Focus states */
+.gpa-elective-button:focus-visible,
+.gpa-grade-button:focus-visible,
+.gpa-primary-action:focus-visible,
+.gpa-secondary-action:focus-visible,
+.gpa-next-subject-button:focus-visible,
+.gpa-icon-button:focus-visible,
+.gpa-settings-section button:focus-visible,
+.gpa-reset-button:focus-visible,
+.gpa-target-input:focus-visible,
+.gpa-save-form input:focus-visible,
+.gpa-settings-section input:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Active press states */
+.gpa-elective-button:active:not(:disabled),
+.gpa-grade-button:active:not(:disabled),
+.gpa-secondary-action:active:not(:disabled),
+.gpa-settings-section button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.gpa-next-subject-button:active:not(:disabled) {
+  background: var(--primary);
+  box-shadow: 0 1px 4px rgba(61, 107, 78, 0.2);
+  transform: scale(0.98);
+}
+
+/* Selected grade flash */
+.gpa-selected-grade-display {
+  font-size: 32px;
+  font-weight: 820;
+  color: var(--primary-strong);
+  line-height: 1.1;
+  min-height: 40px;
+}
+
+.gpa-grade-just-selected {
+  animation: gpaGradeFlash 200ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
 .gpa-result-card {
   display: grid;
-  justify-items: center;
-  gap: 12px;
-  padding: 34px 28px;
-  text-align: center;
+  gap: 18px;
+  padding: 28px;
+  animation: gpaCardIn 200ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.gpa-result-layout {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 28px;
+  align-items: start;
+}
+
+.gpa-result-main {
+  display: grid;
+  gap: 6px;
+  text-align: left;
 }
 
 .gpa-result-number {
-  font-size: 76px;
+  font-size: 56px;
   line-height: 0.95;
-  font-weight: 820;
-  color: var(--text);
+  font-weight: 860;
+  color: var(--primary-strong);
+  letter-spacing: -0.02em;
 }
 
 .gpa-result-subtitle {
@@ -4676,10 +4880,12 @@ body {
 }
 
 .gpa-target-comparison {
-  padding: 7px 10px;
+  margin-top: 4px;
+  padding: 6px 10px;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 780;
+  width: fit-content;
 }
 
 .gpa-target-comparison.is-met {
@@ -4692,9 +4898,32 @@ body {
   color: #8a4f00;
 }
 
+.gpa-result-breakdown {
+  min-width: 0;
+}
+
+.gpa-result-breakdown h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 760;
+  color: var(--gpa-muted);
+}
+
 .gpa-result-actions {
-  justify-content: center;
+  margin-top: 4px;
+}
+
+.gpa-result-save-section {
+  border-top: 1px solid var(--gpa-border);
+  padding-top: 20px;
   margin-top: 8px;
+}
+
+.gpa-result-save-section .gpa-save-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  align-items: end;
 }
 
 .gpa-save-form {
@@ -4702,8 +4931,7 @@ body {
   gap: 12px;
 }
 
-.gpa-save-form label,
-.gpa-settings-section label {
+.gpa-save-form label {
   display: grid;
   gap: 6px;
   color: var(--gpa-muted);
@@ -4722,11 +4950,27 @@ body {
 
 .gpa-save-status {
   color: var(--success);
+  animation: gpaSlideUp 200ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.gpa-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: gpaSpinnerRotate 600ms linear infinite;
+}
+
+@keyframes gpaSpinnerRotate {
+  to { transform: rotate(360deg); }
 }
 
 .gpa-save-error,
 .gpa-quiet-warning {
   color: #a13b2b;
+  animation: gpaSlideUp 200ms cubic-bezier(.2, .8, .2, 1) both;
 }
 
 .gpa-settings-backdrop {
@@ -4736,6 +4980,8 @@ body {
   display: flex;
   justify-content: flex-end;
   background: rgba(15, 23, 42, 0.18);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) 0;
+  animation: gpaFadeIn 200ms ease both;
 }
 
 .gpa-settings-panel {
@@ -4745,8 +4991,14 @@ body {
   background: var(--gpa-card-bg);
   color: var(--text);
   border-left: 1px solid var(--gpa-border);
-  box-shadow: -16px 0 40px rgba(25, 42, 70, 0.14);
+  box-shadow: -16px 0 40px rgba(26, 22, 18, 0.14);
   overflow-y: auto;
+  animation: gpaSettingsIn 250ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+@keyframes gpaSettingsIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
 }
 
 .gpa-settings-header {
@@ -4807,17 +5059,31 @@ body {
     padding-top: 14px;
   }
 
-  .gpa-elective-grid,
-  .gpa-grade-workspace,
-  .gpa-lower-grid {
+  .gpa-elective-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .gpa-grade-workspace {
     grid-template-columns: 1fr;
   }
 
   .gpa-grade-right {
-    padding-left: 0;
-    padding-top: 18px;
+    padding: 16px;
     border-left: 0;
     border-top: 1px solid var(--gpa-border);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .gpa-grade-right strong {
+    min-height: auto;
+    font-size: 36px;
+  }
+
+  .gpa-lower-grid {
+    grid-template-columns: 1fr;
   }
 
   .gpa-selection-panel h1,
@@ -4825,7 +5091,150 @@ body {
     font-size: 28px;
   }
 
+  .gpa-result-layout {
+    grid-template-columns: 1fr;
+  }
+
   .gpa-result-number {
-    font-size: 58px;
+    font-size: 48px;
+  }
+
+  .gpa-core-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .gpa-final-page {
+    width: 100%;
+    padding: 12px 16px 28px;
+  }
+
+  .gpa-final-topbar {
+    margin-bottom: 12px;
+  }
+
+  .gpa-final-topbar-title {
+    font-size: 16px;
+  }
+
+  .gpa-selection-panel h1,
+  .gpa-target-card h1 {
+    font-size: 24px;
+  }
+
+  .gpa-elective-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gpa-elective-button {
+    min-height: 52px;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .gpa-core-item {
+    padding: 10px 12px;
+  }
+
+  .gpa-core-name {
+    font-size: 14px;
+  }
+
+  .gpa-grade-card {
+    padding: 14px;
+  }
+
+  .gpa-subject-heading-row h1 {
+    font-size: 22px;
+  }
+
+  .gpa-grade-button {
+    height: 44px;
+    font-size: 14px;
+  }
+
+  .gpa-next-subject-button {
+    width: 100%;
+  }
+
+  .gpa-result-card {
+    padding: 20px;
+  }
+
+  .gpa-result-number {
+    font-size: 42px;
+  }
+
+  .gpa-result-actions {
+    display: grid;
+    gap: 8px;
+  }
+
+  .gpa-result-actions button {
+    width: 100%;
+  }
+
+  .gpa-result-save-section .gpa-save-form {
+    grid-template-columns: 1fr;
+  }
+
+  .gpa-target-card {
+    padding: 20px;
+  }
+
+  .gpa-target-actions {
+    display: grid;
+    gap: 8px;
+  }
+
+  .gpa-target-actions button {
+    width: 100%;
+  }
+
+  .gpa-settings-panel {
+    width: 100%;
+  }
+}
+
+@media (min-width: 1440px) {
+  .gpa-final-page {
+    width: min(1280px, calc(100% - 48px));
+  }
+}
+
+@media (pointer: coarse) {
+  .gpa-elective-button,
+  .gpa-grade-button,
+  .gpa-primary-action,
+  .gpa-secondary-action,
+  .gpa-next-subject-button,
+  .gpa-icon-button {
+    min-height: 48px;
+  }
+
+  .gpa-grade-button {
+    height: 48px;
+  }
+
+  .gpa-core-item {
+    min-height: 48px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .gpa-grade-row:hover {
+    background: color-mix(in srgb, var(--text) 4%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
