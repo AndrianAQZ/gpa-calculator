@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Check, ChevronRight, RotateCcw, Save, Settings, X } from 'lucide-react'
-import '../App.css'
+import './App.css'
 
 const CORE_SUBJECTS = ['English', 'Health and Physical Education', 'History', 'Mathematics', 'Science']
 const ELECTIVE_SUBJECTS = [
@@ -184,20 +184,12 @@ const contrastRatio = (a, b) => {
 
 const isInappropriateName = (name) => {
   const lowerName = name.toLowerCase().trim()
-  const inappropriateWords = [
-    'fuck', 'shit', 'damn', 'bitch', 'ass', 'crap', 'piss', 'dick', 'cock',
-    'pussy', 'cunt', 'bastard', 'whore', 'slut', 'nigger', 'nigga', 'fag',
-    'faggot', 'retard', 'penis', 'vagina', 'sex', 'porn', 'xxx', 'kill',
-    'die', 'death', 'hitler', 'nazi', 'kkk', 'terrorist', 'bomb', 'rape',
-    'idiot', 'stupid', 'dumb', 'moron', 'loser', 'hate', 'kys'
-  ]
+  const filtered = ['fuck', 'shit', 'cunt', 'nigger', 'nazi', 'hitler', 'kkk']
 
-  if (inappropriateWords.some(word => lowerName.includes(word))) {
-    return true
-  }
+  if (filtered.some(word => lowerName.includes(word))) return true
 
   const specialCharCount = (lowerName.match(/[^a-z\s\-']/g) || []).length
-  return specialCharCount > 3 || lowerName.replace(/\s/g, '').length < 2 || /(.)\1{4,}/.test(lowerName)
+  return specialCharCount > 4 || lowerName.replace(/\s/g, '').length < 2 || /(.)\1{5,}/.test(lowerName)
 }
 
 function App() {
@@ -209,6 +201,7 @@ function App() {
   const [directFinalGrades, setDirectFinalGrades] = useState({})
   const [termFinalGrades, setTermFinalGrades] = useState({})
   const [expectedGrades, setExpectedGrades] = useState({})
+  const [predictedSubjects, setPredictedSubjects] = useState({})
   const [finalGrades, setFinalGrades] = useState({})
   const [gpa, setGpa] = useState(null)
   const [yearlyGPA, setYearlyGPA] = useState(null)
@@ -245,6 +238,14 @@ function App() {
   const enteredFinalGradeCount = selectedSubjects.filter(subject => finalGrades[subject]).length
   const allSubjectsEntered = enteredFinalGradeCount === selectedSubjects.length
   const closestGpaGrade = gpa && gpa > 0 ? getClosestGradeForPoints(gpa) : null
+  const hasPredictedSubjects = useMemo(
+    () => Object.keys(predictedSubjects).length > 0,
+    [predictedSubjects]
+  )
+  const baseGpa = useMemo(() => {
+    if (!selectedSubjects.length) return null
+    return calculateGPA(true)
+  }, [finalGrades, selectedSubjects, predictedSubjects])
   const formatGpa = (value) => Number(value).toLocaleString(undefined, {
     minimumFractionDigits: Number.isInteger(Number(value)) ? 0 : 1,
     maximumFractionDigits: 2
@@ -292,13 +293,15 @@ function App() {
     return { grade: getClosestGradeForPoints(averagePoints), points: averagePoints }
   }
 
-  function calculateGPA() {
+  function calculateGPA(excludePredicted = false) {
     let totalWeightedScore = 0
     let totalKnownWeight = 0
 
     selectedSubjects.forEach(subject => {
       const weight = SUBJECTS[subject]
       const finalGrade = finalGrades[subject]
+
+      if (excludePredicted && predictedSubjects[subject]) return
 
       if (weight && finalGrade?.points) {
         totalWeightedScore += finalGrade.points * weight
@@ -475,11 +478,11 @@ function App() {
 
   useEffect(() => {
     if (selectedSubjects.length > 0) {
-      const currentGPA = calculateGPA()
+      const currentGPA = calculateGPA(false)
       setGpa(currentGPA)
       setYearlyGPA(calculateYearlyGPA())
     }
-  }, [finalGrades, selectedSubjects])
+  }, [finalGrades, selectedSubjects, predictedSubjects])
 
   useEffect(() => {
     if (activeSubjectIndex > selectedSubjects.length - 1) {
@@ -547,6 +550,32 @@ function App() {
   const handleGradeSelect = (subject, grade) => {
     setGradeEntryModes(prev => ({ ...prev, [subject]: 'final' }))
     setDirectFinalGrades(prev => ({ ...prev, [subject]: grade }))
+  }
+
+  const handleTogglePredicted = (subject) => {
+    setPredictedSubjects(prev => {
+      const next = { ...prev }
+      if (next[subject]) {
+        delete next[subject]
+      } else {
+        next[subject] = true
+      }
+      return next
+    })
+  }
+
+  const navigateToSubject = (subject) => {
+    const idx = selectedSubjects.indexOf(subject)
+    if (idx >= 0) {
+      setActiveSubjectIndex(idx)
+      setCurrentStep('gradeEntry')
+    }
+  }
+
+  const handlePreviousSubject = () => {
+    if (activeSubjectIndex > 0) {
+      setActiveSubjectIndex(activeSubjectIndex - 1)
+    }
   }
 
   const handleNextSubject = () => {
@@ -720,18 +749,40 @@ function App() {
     </header>
   )
 
-  const renderGradeSummary = (showOnlyEntered = false) => (
+  const renderGradeSummary = (showOnlyEntered = false, allowClick = false, navigateToSubject = null) => (
     <div className="gpa-grade-list" aria-live="polite" aria-atomic="false">
       {selectedSubjects
         .filter(subject => !showOnlyEntered || finalGrades[subject])
-        .map(subject => (
-          <div className="gpa-grade-row" key={subject}>
-            <span className="gpa-grade-subject">{subject}</span>
-            <span className={`gpa-grade-column${finalGrades[subject] ? '' : ' is-empty'}`}>
-              {finalGrades[subject]?.grade || 'Not entered'}
-            </span>
-          </div>
-        ))}
+        .map(subject => {
+          const grade = finalGrades[subject]
+          const isPredicted = predictedSubjects[subject]
+          const rowContent = (
+            <>
+              <span className="gpa-grade-subject">{subject}</span>
+              <span className={`gpa-grade-column${grade ? '' : ' is-empty'}`}>
+                {grade ? grade.grade : 'Not entered'}
+                {isPredicted ? <span className="gpa-predicted-badge" title="Excluded from base GPA">predicted</span> : null}
+              </span>
+            </>
+          )
+          if (allowClick && navigateToSubject) {
+            return (
+              <button
+                type="button"
+                key={subject}
+                className="gpa-grade-row gpa-grade-row-clickable"
+                onClick={() => navigateToSubject(subject)}
+              >
+                {rowContent}
+              </button>
+            )
+          }
+          return (
+            <div className="gpa-grade-row" key={subject}>
+              {rowContent}
+            </div>
+          )
+        })}
     </div>
   )
 
@@ -814,10 +865,11 @@ function App() {
 
   const renderTargetScreen = () => (
     <main className="gpa-final-page" id="main-content">
-      {renderTopBar('')}
+      {renderTopBar('Set your goal')}
       <section className="gpa-target-stage" aria-label="Optional target GPA">
         <div className="gpa-target-card">
           <h1 id="target-gpa-label">Target GPA</h1>
+          <p className="gpa-target-description">Set a goal to see what grades you need to reach it. Optional — you can skip this.</p>
           <input
             type="number"
             min={MIN_GPA_VALUE}
@@ -846,6 +898,16 @@ function App() {
           <h1 key={activeSubject}>{activeSubject}</h1>
           <span>{activeSubjectIndex + 1} of {selectedSubjects.length}</span>
         </div>
+        <div className="gpa-prediction-row">
+          <button
+            type="button"
+            className={`gpa-prediction-toggle${predictedSubjects[activeSubject] ? ' is-predicted' : ''}`}
+            onClick={() => handleTogglePredicted(activeSubject)}
+          >
+            {predictedSubjects[activeSubject] ? 'Marked as predicted' : 'Mark as predicted'}
+          </button>
+          <p className="gpa-prediction-note">Predicted grades are excluded from your base GPA but still visible.</p>
+        </div>
         <div key={selectedGrade || 'empty'} className={`gpa-selected-grade-display${selectedGrade ? ' gpa-grade-just-selected' : ''}`}>
           {selectedGrade || <span className="gpa-no-grade">Tap a grade below</span>}
         </div>
@@ -867,20 +929,31 @@ function App() {
             </div>
           ))}
         </div>
-        <button
-          type="button"
-          className="gpa-next-subject-button"
-          onClick={handleNextSubject}
-          disabled={!selectedGrade}
-        >
-          {activeSubjectIndex === selectedSubjects.length - 1 ? 'See GPA' : 'Next subject'}
-          <ChevronRight aria-hidden="true" />
-        </button>
+        <div className="gpa-grade-nav-buttons">
+          <button
+            type="button"
+            className="gpa-prev-subject-button"
+            onClick={handlePreviousSubject}
+            disabled={activeSubjectIndex === 0}
+          >
+            <ChevronRight aria-hidden="true" style={{ transform: 'rotate(180deg)' }} />
+            Previous
+          </button>
+          <button
+            type="button"
+            className="gpa-next-subject-button"
+            onClick={handleNextSubject}
+            disabled={!selectedGrade}
+          >
+            {activeSubjectIndex === selectedSubjects.length - 1 ? 'See GPA' : 'Next subject'}
+            <ChevronRight aria-hidden="true" />
+          </button>
+        </div>
       </section>
       <section className={`gpa-lower-grid${targetGPA ? '' : ' single'}`}>
         <section className="gpa-card gpa-lower-card">
           <h2>Grade summary</h2>
-          {renderGradeSummary()}
+          {renderGradeSummary(false, true, navigateToSubject)}
         </section>
         {renderRequirements()}
       </section>
@@ -897,6 +970,11 @@ function App() {
             <div className="gpa-result-subtitle">
               {closestGpaGrade ? `Closest grade: ${closestGpaGrade}` : 'Enter grades to calculate your GPA'}
             </div>
+            {hasPredictedSubjects && baseGpa !== null && (
+              <div className="gpa-predicted-note-row">
+                Base GPA: <strong>{baseGpa.toFixed(2)}</strong> (excluding predicted)
+              </div>
+            )}
             {targetGPA ? (
               <div className={`gpa-target-comparison ${gpa >= targetGPA ? 'is-met' : 'is-short'}`}>
                 {gpa >= targetGPA
@@ -911,13 +989,21 @@ function App() {
               {selectedSubjects.map(subject => {
                 const grade = finalGrades[subject]
                 const weight = SUBJECTS[subject]
-                const weightedPoints = grade ? (grade.points * weight) : 0
+                const isPredicted = predictedSubjects[subject]
                 return (
-                  <div className="gpa-grade-row" key={subject}>
+                  <button
+                    type="button"
+                    key={subject}
+                    className="gpa-grade-row gpa-grade-row-clickable"
+                    onClick={() => navigateToSubject(subject)}
+                  >
                     <span className="gpa-grade-subject">{subject}</span>
-                    <span className="gpa-grade-column">{grade ? grade.grade : 'Not entered'}</span>
+                    <span className="gpa-grade-column">
+                      {grade ? grade.grade : 'Not entered'}
+                      {isPredicted ? <span className="gpa-predicted-badge" title="Excluded from base GPA">predicted</span> : null}
+                    </span>
                     <span className="gpa-grade-weight">{weight}x</span>
-                  </div>
+                  </button>
                 )
               })}
             </div>
@@ -954,14 +1040,14 @@ function App() {
           {saveErrorMessage ? <p className="gpa-save-error" role="alert">{saveErrorMessage}</p> : null}
         </div>
         <div className="gpa-result-actions">
-          <button type="button" className="gpa-secondary-action" onClick={() => setCurrentStep('gradeEntry')}>Edit grades</button>
+          <button type="button" className="gpa-primary-action" onClick={() => setCurrentStep('gradeEntry')}>Edit grades</button>
           <button type="button" className="gpa-secondary-action" onClick={() => setCurrentStep('selection')}>Change electives</button>
         </div>
       </section>
       <section className="gpa-lower-grid">
         <section className="gpa-card gpa-lower-card" style={{ animationDelay: '100ms' }}>
           <h2>Grade summary</h2>
-          {renderGradeSummary(true)}
+          {renderGradeSummary(true, true, navigateToSubject)}
         </section>
       </section>
     </main>
