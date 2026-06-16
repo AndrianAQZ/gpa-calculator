@@ -278,6 +278,7 @@ function App() {
   const [currentTerm, setCurrentTerm] = useState(() => getDetectedTerm())
   const [termSelectionMode, setTermSelectionMode] = useState('auto')
   const [showSettings, setShowSettings] = useState(false)
+  const [yearChangeConfirm, setYearChangeConfirm] = useState(null)
   const [isTargetTransitioning, setIsTargetTransitioning] = useState(false)
   const [saveStatusMessage, setSaveStatusMessage] = useState('')
   const [saveErrorMessage, setSaveErrorMessage] = useState('')
@@ -473,6 +474,7 @@ function App() {
       setTermGrades(typeof parsed?.termGrades === 'object' && parsed.termGrades ? parsed.termGrades : {})
       setTermFinalGrades(typeof parsed?.termFinalGrades === 'object' && parsed.termFinalGrades ? parsed.termFinalGrades : {})
       setExpectedGrades(typeof parsed?.expectedGrades === 'object' && parsed.expectedGrades ? parsed.expectedGrades : {})
+      setPredictedSubjects(typeof parsed?.predictedSubjects === 'object' && parsed.predictedSubjects ? parsed.predictedSubjects : {})
       setCurrentStep(safeStep)
       setYearLevel(parsed?.yearLevel === 8 ? 8 : (parsed?.yearLevel === 9 ? 9 : null))
       setTargetGPA(getOptionalTargetFromPersisted(parsed))
@@ -512,6 +514,7 @@ function App() {
       directFinalGrades,
       termFinalGrades,
       expectedGrades,
+      predictedSubjects,
       targetGPA,
       activeSubjectIndex,
       termSelectionMode,
@@ -535,6 +538,7 @@ function App() {
     directFinalGrades,
     termFinalGrades,
     expectedGrades,
+    predictedSubjects,
     targetGPA,
     activeSubjectIndex,
     termSelectionMode,
@@ -891,7 +895,47 @@ function App() {
     setYearLevel(year)
     setSelectedSubjects([...YEAR_CURRICULA[year].core])
     setActiveSubjectIndex(0)
+    setGradeEntryModes(createDefaultGradeModes())
+    setTermGrades({})
+    setDirectFinalGrades({})
+    setTermFinalGrades({})
+    setExpectedGrades({})
+    setFinalGrades({})
+    setGpa(null)
+    setYearlyGPA(null)
+    setTargetGPA(null)
+    setTargetInput('')
+    setPredictedSubjects({})
     setCurrentStep('selection')
+  }
+
+  const handleYearLevelChange = (year) => {
+    if (year === yearLevel || yearChangeConfirm !== null) return
+    setYearChangeConfirm(year)
+  }
+
+  const cancelYearChange = () => setYearChangeConfirm(null)
+
+  const confirmYearChange = () => {
+    const year = yearChangeConfirm
+    if (year === null) return
+    setYearLevel(year)
+    setSelectedSubjects([...YEAR_CURRICULA[year].core])
+    setActiveSubjectIndex(0)
+    setGradeEntryModes(createDefaultGradeModes())
+    setTermGrades({})
+    setDirectFinalGrades({})
+    setTermFinalGrades({})
+    setExpectedGrades({})
+    setFinalGrades({})
+    setGpa(null)
+    setYearlyGPA(null)
+    setTargetGPA(null)
+    setTargetInput('')
+    setPredictedSubjects({})
+    setCurrentStep('selection')
+    setYearChangeConfirm(null)
+    setShowSettings(false)
   }
 
   const renderYearScreen = () => (
@@ -933,15 +977,11 @@ function App() {
             <h2 className="gpa-subject-group-heading">Core subjects</h2>
             <p className="gpa-subject-group-note">These are always included in your GPA calculation.</p>
             <div className="gpa-core-list">
-              {yearCore.map((subject, index) => {
-                const w = (yearLevel ? YEAR_CURRICULA[yearLevel].coreWeights : YEAR_CURRICULA[9].coreWeights)[subject] || 1
-                return (
-                  <div key={subject} className="gpa-core-item" style={{ animationDelay: `${index * 25}ms` }}>
-                    <span className="gpa-core-name">{subject}</span>
-                    <span className="gpa-core-weight">{w}x weight</span>
-                  </div>
-                )
-              })}
+              {yearCore.map((subject, index) => (
+                <div key={subject} className="gpa-core-item" style={{ animationDelay: `${index * 25}ms` }}>
+                  <span className="gpa-core-name">{subject}</span>
+                </div>
+              ))}
             </div>
           </div>
           <div className="gpa-subject-group">
@@ -1105,7 +1145,6 @@ function App() {
             <div className="gpa-grade-list">
               {selectedSubjects.map(subject => {
                 const grade = finalGrades[subject]
-                const weight = SUBJECTS[subject]
                 const isPredicted = predictedSubjects[subject]
                 return (
                   <button
@@ -1119,7 +1158,6 @@ function App() {
                       {grade ? grade.grade : 'Not entered'}
                       {isPredicted ? <span className="gpa-predicted-badge" title="Excluded from base GPA">predicted</span> : null}
                     </span>
-                    <span className="gpa-grade-weight">{weight}x</span>
                   </button>
                 )
               })}
@@ -1174,11 +1212,11 @@ function App() {
     if (!showSettings) return null
 
     return (
-      <div className="gpa-settings-backdrop" role="presentation" onMouseDown={() => setShowSettings(false)}>
+      <div className="gpa-settings-backdrop" role="presentation" onMouseDown={() => { setShowSettings(false); setYearChangeConfirm(null) }}>
         <aside className="gpa-settings-panel" role="dialog" aria-modal="true" aria-label="Settings" onMouseDown={event => event.stopPropagation()}>
           <div className="gpa-settings-header">
             <h2>Settings</h2>
-            <button type="button" className="gpa-icon-button" onClick={() => setShowSettings(false)} aria-label="Close settings">
+            <button type="button" className="gpa-icon-button" onClick={() => { setShowSettings(false); setYearChangeConfirm(null) }} aria-label="Close settings">
               <X aria-hidden="true" />
             </button>
           </div>
@@ -1220,6 +1258,37 @@ function App() {
               <button type="button" onClick={handleSettingsTargetSave}>Save</button>
               <button type="button" onClick={() => setTargetGPA(null)}>Clear</button>
             </div>
+          </div>
+          <div className="gpa-settings-section">
+            <h3>Year level</h3>
+            <p className="gpa-settings-note">Switches the curriculum, subjects, and GPA formula. Current grades will be reset.</p>
+            <div className="gpa-year-toggle" role="group" aria-label="Year level">
+              <button
+                type="button"
+                className={`gpa-year-toggle-option${yearLevel === 8 ? ' is-active' : ''}`}
+                onClick={() => handleYearLevelChange(8)}
+                aria-pressed={yearLevel === 8}
+              >
+                Year 8
+              </button>
+              <button
+                type="button"
+                className={`gpa-year-toggle-option${yearLevel === 9 ? ' is-active' : ''}`}
+                onClick={() => handleYearLevelChange(9)}
+                aria-pressed={yearLevel === 9}
+              >
+                Year 9+
+              </button>
+            </div>
+            {yearChangeConfirm !== null ? (
+              <div className="gpa-year-confirm" role="alertdialog" aria-label="Confirm year level change">
+                <p>Switch to {YEAR_CURRICULA[yearChangeConfirm].label}? This clears your selected subjects and entered grades.</p>
+                <div className="gpa-year-confirm-actions">
+                  <button type="button" className="gpa-secondary-action" onClick={cancelYearChange}>Cancel</button>
+                  <button type="button" className="gpa-primary-action" onClick={confirmYearChange}>Yes, switch</button>
+                </div>
+              </div>
+            ) : null}
           </div>
           <div className="gpa-settings-section">
             <h3>Student details</h3>

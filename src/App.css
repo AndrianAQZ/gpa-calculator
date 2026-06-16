@@ -855,7 +855,7 @@ h1, h2, h3, h4 {
 }
 
 .gpa-result-breakdown .gpa-grade-row {
-  grid-template-columns: 1fr 6rem 3rem;
+  grid-template-columns: 1fr 6rem;
 }
 
 .gpa-grade-row:hover {
@@ -904,12 +904,7 @@ h1, h2, h3, h4 {
 }
 
 .gpa-grade-weight {
-  width: 3rem;
-  justify-self: end;
-  text-align: right;
-  font-size: 12px;
-  font-weight: 550;
-  color: var(--text-muted);
+  display: none;
 }
 
 /* --- Focus States --- */
@@ -1163,6 +1158,84 @@ h1, h2, h3, h4 {
 
 .gpa-reset-button {
   justify-self: start;
+}
+
+.gpa-settings-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.gpa-year-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.gpa-year-toggle-option {
+  min-height: 40px;
+  padding: 0 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.gpa-year-toggle-option + .gpa-year-toggle-option {
+  border-left: 1px solid var(--line-strong);
+}
+
+.gpa-year-toggle-option:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.gpa-year-toggle-option.is-active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.gpa-year-toggle-option:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.gpa-year-confirm {
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid var(--warning);
+  background: var(--warning-soft);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 12px;
+  animation: slideUp 180ms cubic-bezier(0.22, 0.8, 0.22, 1) both;
+}
+
+.gpa-year-confirm p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.gpa-year-confirm-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gpa-year-confirm-actions button {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
 }
 
 /* ========== Responsive ========== */
