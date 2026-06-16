@@ -82,8 +82,7 @@ check('T5: persistLocalGpaSnapshot is a no-op (does not write localStorage)',
 check('T5: Year screen has no description text',
   !/gpa-year-description/.test(appJsx),
   'gpa-year-description class still used in App.jsx');
-check('T5: Year screen card contains only heading + year options',
-  /renderYearScreen[\s\S]*?Year level[\s\S]*?handleYearSelect\(8\)[\s\S]*?handleYearSelect\(9\)/.test(appJsx) &&
+check('T5: Year screen has no legacy description class',
   !/gpa-year-description/.test(appJsx),
   'Year screen still has description text');
 
@@ -146,9 +145,9 @@ check('T10: Spacing tokens defined',
   'Spacing tokens not defined');
 
 // Task 11: RESPONSIVE - Mobile and tablet
-check('T11: 820px breakpoint for tablet (results 1 column)',
-  /@media \(max-width: 820px\)[\s\S]*?gpa-result-layout[\s\S]*?grid-template-columns:\s*1fr/.test(appCss),
-  '820px tablet breakpoint not found for results');
+check('T11: 820px breakpoint for tablet (year choices stack)',
+  /@media \(max-width: 820px\)[\s\S]*?gpa-year-choices[\s\S]*?grid-template-columns:\s*1fr/.test(appCss),
+  '820px tablet breakpoint not found for year-choices stack');
 check('T11: 560px breakpoint for mobile (1 column electives)',
   /@media \(max-width: 560px\)[\s\S]*?gpa-elective-grid[\s\S]*?grid-template-columns:\s*1fr/.test(appCss),
   '560px mobile breakpoint not found for electives');

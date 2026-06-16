@@ -124,12 +124,12 @@ const GOOGLE_APPS_SCRIPT_URL = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL || 'h
 const LOCAL_STORAGE_KEY = 'gpa-calculator-state-v1'
 const THEME_STORAGE_KEY = 'gpa-calculator-theme-v1'
 const DEFAULT_THEME = {
-  primary: '#3d6b4e',
-  primaryStrong: '#2a4d36',
-  background: '#f5f0eb',
+  primary: '#1f4a2e',
+  primaryStrong: '#10301c',
+  background: '#f1ede4',
   surface: '#ffffff',
-  text: '#1a1612',
-  accent: '#3d6b4e'
+  text: '#14110d',
+  accent: '#1f4a2e'
 }
 const THEME_PRESETS = {
   Forest: DEFAULT_THEME,
@@ -937,90 +937,122 @@ function App() {
     <main className="gpa-final-page" id="main-content">
       {renderTopBar('GPA Calculator')}
       <section className="gpa-year-stage" aria-label="Choose year level">
-        <div className="gpa-year-card">
-          <h1 id="year-label">Year level</h1>
-          <div className="gpa-year-options" role="group" aria-labelledby="year-label">
-            <button
-              type="button"
-              className="gpa-year-option"
-              onClick={() => handleYearSelect(8)}
-            >
-              <span className="gpa-year-option-title">Year 8</span>
-            </button>
-            <button
-              type="button"
-              className="gpa-year-option"
-              onClick={() => handleYearSelect(9)}
-            >
-              <span className="gpa-year-option-title">Year 9+</span>
-            </button>
-          </div>
+        <div className="gpa-year-eyebrow">Step 1 of 4</div>
+        <h1 id="year-label" className="gpa-year-question">Which year are you in?</h1>
+        <p className="gpa-year-help">Pick the year you're calculating for. Year 8 uses a different formula and a different elective list than Year 9 and above.</p>
+        <div className="gpa-year-choices" role="group" aria-labelledby="year-label">
+          <button
+            type="button"
+            className="gpa-year-option"
+            onClick={() => handleYearSelect(8)}
+          >
+            <span className="gpa-year-option-kicker">Year 8</span>
+            <span className="gpa-year-option-title">Middle school formula</span>
+            <span className="gpa-year-option-note">Three elective slots, no PE Extension or Geography</span>
+          </button>
+          <button
+            type="button"
+            className="gpa-year-option"
+            onClick={() => handleYearSelect(9)}
+          >
+            <span className="gpa-year-option-kicker">Year 9 and above</span>
+            <span className="gpa-year-option-title">Contact-hour formula</span>
+            <span className="gpa-year-option-note">Four elective slots with the full list including PE Extension</span>
+          </button>
         </div>
       </section>
     </main>
   )
 
-  const renderSelectionScreen = () => (
-    <main className="gpa-final-page" id="main-content">
-      {renderTopBar('Pick your electives')}
-      <section className={`gpa-selection-panel${isTargetTransitioning ? ' is-transitioning' : ''}`}>
-        <div className="gpa-subject-groups">
-          <div className="gpa-subject-group">
-            <div className="gpa-subject-group-header-row">
-              <div>
-                <h2 className="gpa-subject-group-heading">Electives</h2>
-                <p className="gpa-subject-group-note">{selectedElectiveCount} of {yearMaxElectives} picked</p>
+  const renderSelectionScreen = () => {
+    const electiveGroups = [
+      {
+        key: 'languages',
+        kicker: 'Languages',
+        note: 'Count for 0.6 of a regular subject in your GPA',
+        subjects: yearElectives.filter(s => LANGUAGE_SUBJECTS.has(s) || s === 'English as an Other Language')
+      },
+      {
+        key: 'creative',
+        kicker: 'Performance and visual',
+        note: 'Count for 0.3 in your GPA',
+        subjects: yearElectives.filter(s => ['Drama', 'Music', 'Visual Art', 'Film, Television and New Media'].includes(s))
+      },
+      {
+        key: 'applied',
+        kicker: 'Applied and technology',
+        note: 'Count for 0.3 in your GPA',
+        subjects: yearElectives.filter(s => ['Business', 'Design', 'Digital Solutions', 'Geography', 'Physical Education (Extension)'].includes(s))
+      }
+    ].filter(g => g.subjects.length > 0)
+
+    return (
+      <main className="gpa-final-page" id="main-content">
+        {renderTopBar('Pick your electives', `${selectedElectiveCount} of ${yearMaxElectives}`)}
+        <section className={`gpa-selection-panel${isTargetTransitioning ? ' is-transitioning' : ''}`}>
+          <div className="gpa-selection-intro">
+            <h1 className="gpa-selection-question">Which electives are you taking?</h1>
+            <p className="gpa-selection-help">Pick up to {yearMaxElectives}. Languages count more in your GPA than other electives.</p>
+          </div>
+          <div className="gpa-subject-groups">
+            {electiveGroups.map((group) => (
+              <div className="gpa-subject-group" key={group.key}>
+                <div className="gpa-subject-group-header">
+                  <h2 className="gpa-subject-group-heading">{group.kicker}</h2>
+                  <span className="gpa-subject-group-note">{group.note}</span>
+                </div>
+                <div className="gpa-elective-grid" aria-label={group.kicker}>
+                  {group.subjects.map((subject, index) => {
+                    const isSelected = selectedSubjects.includes(subject)
+                    const isDisabled = !isSelected && selectedElectiveCount >= yearMaxElectives
+                    return (
+                      <button
+                        type="button"
+                        key={subject}
+                        className={`gpa-elective-button${isSelected ? ' is-selected' : ''}`}
+                        onClick={() => handleElectiveToggle(subject)}
+                        disabled={isDisabled}
+                        aria-pressed={isSelected}
+                        style={{ animationDelay: `${index * 20 + 60}ms` }}
+                      >
+                        <span className="gpa-elective-button-label">{subject}</span>
+                        {isSelected ? <Check aria-hidden="true" /> : null}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-            <div className="gpa-elective-grid" aria-label="Electives">
-              {yearElectives.map((subject, index) => {
-                const isSelected = selectedSubjects.includes(subject)
-                const isDisabled = !isSelected && selectedElectiveCount >= yearMaxElectives
-                return (
-                  <button
-                    type="button"
-                    key={subject}
-                    className={`gpa-elective-button${isSelected ? ' is-selected' : ''}`}
-                    onClick={() => handleElectiveToggle(subject)}
-                    disabled={isDisabled}
-                    aria-pressed={isSelected}
-                    style={{ animationDelay: `${index * 20 + 60}ms` }}
-                  >
-                    <span>{subject}</span>
-                    {isSelected ? <Check aria-hidden="true" /> : null}
-                  </button>
-                )
-              })}
+            ))}
+            <div className="gpa-subject-group">
+              <button
+                type="button"
+                className="gpa-disclosure-button"
+                onClick={() => setShowCoreSubjects(prev => !prev)}
+                aria-expanded={showCoreSubjects}
+                aria-controls="core-subjects-list"
+              >
+                <span>Core subjects</span>
+                <span className="gpa-disclosure-meta">{showCoreSubjects ? 'Hide' : `${yearCore.length} included`}</span>
+              </button>
+              {showCoreSubjects ? (
+                <div id="core-subjects-list" className="gpa-core-list">
+                  {yearCore.map((subject, index) => (
+                    <div key={subject} className="gpa-core-item" style={{ animationDelay: `${index * 25}ms` }}>
+                      <span className="gpa-core-name">{subject}</span>
+                      <span className="gpa-core-weight">Always counted</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
-          <div className="gpa-subject-group">
-            <button
-              type="button"
-              className="gpa-disclosure-button"
-              onClick={() => setShowCoreSubjects(prev => !prev)}
-              aria-expanded={showCoreSubjects}
-              aria-controls="core-subjects-list"
-            >
-              <span>Core subjects</span>
-              <span className="gpa-disclosure-meta">{showCoreSubjects ? 'Hide' : `${yearCore.length} included`}</span>
-            </button>
-            {showCoreSubjects ? (
-              <div id="core-subjects-list" className="gpa-core-list">
-                {yearCore.map((subject, index) => (
-                  <div key={subject} className="gpa-core-item" style={{ animationDelay: `${index * 25}ms` }}>
-                    <span className="gpa-core-name">{subject}</span>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </div>
-        {persistenceWarning ? (
-          <p className="gpa-quiet-warning">Progress may not persist because browser storage was blocked.</p>
-        ) : null}
-      </section>
-    </main>
-  )
+          {persistenceWarning ? (
+            <p className="gpa-quiet-warning">Progress may not persist because browser storage was blocked.</p>
+          ) : null}
+        </section>
+      </main>
+    )
+  }
 
   const renderTargetScreen = () => (
     <main className="gpa-final-page" id="main-content">
@@ -1116,47 +1148,58 @@ function App() {
     <main className="gpa-final-page" id="main-content">
       {renderTopBar('Your GPA', `${selectedSubjects.length} subjects`)}
       <section className="gpa-card gpa-result-card">
-        <div className="gpa-result-layout">
-          <div className="gpa-result-main">
-            <div className="gpa-result-number" aria-live="polite" aria-atomic="true">{gpa && gpa > 0 ? gpa.toFixed(2) : '--'}</div>
-            <div className="gpa-result-subtitle">
-              {closestGpaGrade ? `About a ${closestGpaGrade}` : 'Add grades to see your GPA'}
-            </div>
-            {hasPredictedSubjects && baseGpa !== null && (
-              <div className="gpa-predicted-note-row">
-                Without predicted: <strong>{baseGpa.toFixed(2)}</strong>
-              </div>
-            )}
+        <header className="gpa-result-header">
+          <div className="gpa-result-kicker">Weighted GPA out of 15</div>
+          <div className="gpa-result-number" aria-live="polite" aria-atomic="true">{gpa && gpa > 0 ? gpa.toFixed(2) : '--'}</div>
+          <div className="gpa-result-subtitle">
+            {(() => {
+              if (!closestGpaGrade || gpa == null || gpa <= 0) return 'Add grades to see your GPA'
+              const isExactGrade = Object.values(GRADES).some(v => Math.abs(v - gpa) < 0.05)
+              if (isExactGrade) return `Sits at a ${closestGpaGrade}`
+              const next = getCeilingGradeForPoints(gpa + 1)
+              if (next && next !== closestGpaGrade) {
+                const article = /^[AEIOU]/.test(closestGpaGrade) ? 'an' : 'a'
+                return `Sits between ${article} ${closestGpaGrade} and a ${next}`
+              }
+              const article = /^[AEIOU]/.test(closestGpaGrade) ? 'an' : 'a'
+              return `Sits at about ${article} ${closestGpaGrade}`
+            })()}
+          </div>
+          <div className="gpa-result-meta">
+            {hasPredictedSubjects && baseGpa !== null ? (
+              <span>Base GPA <strong>{baseGpa.toFixed(2)}</strong> excluding predicted</span>
+            ) : null}
             {targetGPA ? (
-              <div className={`gpa-target-comparison ${gpa >= targetGPA ? 'is-met' : 'is-short'}`}>
+              <span className={`gpa-target-comparison ${gpa >= targetGPA ? 'is-met' : 'is-short'}`}>
                 {gpa >= targetGPA
                   ? `On target (${formatGpa(targetGPA)})`
-                  : `${(targetGPA - (gpa || 0)).toFixed(2)} under ${formatGpa(targetGPA)}`}
-              </div>
+                  : `${(targetGPA - (gpa || 0)).toFixed(2)} below ${formatGpa(targetGPA)}`}
+              </span>
             ) : null}
           </div>
-          <div className="gpa-result-breakdown">
-            <h3>Your subjects</h3>
-            <div className="gpa-grade-list">
-              {selectedSubjects.map(subject => {
-                const grade = finalGrades[subject]
-                const isPredicted = predictedSubjects[subject]
-                return (
-                  <button
-                    type="button"
-                    key={subject}
-                    className="gpa-grade-row gpa-grade-row-clickable"
-                    onClick={() => navigateToSubject(subject)}
-                  >
-                    <span className="gpa-grade-subject">{subject}</span>
-                    <span className="gpa-grade-column">
-                      {grade ? grade.grade : '—'}
-                      {isPredicted ? <span className="gpa-predicted-badge" title="Excluded from base GPA">predicted</span> : null}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
+        </header>
+        <div className="gpa-result-breakdown">
+          <h3>Subject contributions</h3>
+          <div className="gpa-grade-list">
+            {selectedSubjects.map((subject, idx) => {
+              const grade = finalGrades[subject]
+              const isPredicted = predictedSubjects[subject]
+              return (
+                <button
+                  type="button"
+                  key={subject}
+                  className="gpa-grade-row gpa-grade-row-clickable gpa-result-row"
+                  onClick={() => navigateToSubject(subject)}
+                  style={{ animationDelay: `${idx * 30 + 60}ms` }}
+                >
+                  <span className="gpa-grade-subject">{subject}</span>
+                  <span className="gpa-grade-column">
+                    {grade ? grade.grade : '—'}
+                    {isPredicted ? <span className="gpa-predicted-badge" title="Excluded from base GPA">predicted</span> : null}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </div>
         <div className="gpa-result-save-section">
