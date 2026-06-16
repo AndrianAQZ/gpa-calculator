@@ -1,25 +1,40 @@
-// Google Apps Script to save GPA data to Google Doc
+// Google Apps Script to save GPA data to Google Drive
 // Deploy this as a Web App with "Execute as: Me" and "Who has access: Anyone"
 
-const GOOGLE_DOC_ID = '1ICuIvuBC-uTpdKCgQWYNKqAfPfnOzOQPIyLYMoXhqvo';
+// Root folder for all GPA records. Each year level gets its own subfolder.
+const ROOT_FOLDER_NAME = 'GPA Calculator Records';
+
+function getOrCreateRootFolder() {
+  const existing = DriveApp.getFoldersByName(ROOT_FOLDER_NAME);
+  if (existing.hasNext()) return existing.next();
+  return DriveApp.createFolder(ROOT_FOLDER_NAME);
+}
+
+function getOrCreateYearFolder(yearLevel) {
+  const root = getOrCreateRootFolder();
+  const folderName = `${yearLevel}`;
+  const matches = root.getFoldersByName(folderName);
+  if (matches.hasNext()) return matches.next();
+  return root.createFolder(folderName);
+}
 
 // Content moderation function
 function isInappropriateName(name) {
   // Convert to lowercase for case-insensitive checking
   const lowerName = name.toLowerCase().trim();
   
-  // List of inappropriate words/patterns
+  // List of inappropriate words/patterns (matched as whole words only to avoid
+  // false positives like "Yassin" containing "ass")
   const inappropriateWords = [
-    'fuck', 'shit', 'damn', 'bitch', 'ass', 'crap', 'piss', 'dick', 'cock', 
-    'pussy', 'cunt', 'bastard', 'whore', 'slut', 'nigger', 'nigga', 'fag', 
-    'faggot', 'retard', 'penis', 'vagina', 'sex', 'porn', 'xxx', 'kill', 
-    'die', 'death', 'hitler', 'nazi', 'kkk', 'terrorist', 'bomb', 'rape',
-    'idiot', 'stupid', 'dumb', 'moron', 'loser', 'hate', 'kys'
+    'fuck', 'shit', 'bitch', 'cunt', 'nigger', 'nigga', 'fag',
+    'faggot', 'penis', 'vagina', 'porn', 'hitler', 'nazi', 'kkk',
+    'pussy', 'whore', 'slut', 'bastard', 'rape', 'terrorist', 'kys'
   ];
-  
-  // Check if name contains any inappropriate words
+
+  // Check if name contains any inappropriate whole words
+  const tokens = lowerName.split(/[^a-z]+/).filter(Boolean)
   for (let word of inappropriateWords) {
-    if (lowerName.includes(word)) {
+    if (tokens.includes(word)) {
       return true;
     }
   }
@@ -70,44 +85,46 @@ function doPost(e) {
       throw new Error('The name provided appears to be inappropriate or invalid. Please use your real name.');
     }
     
-    // Open the Google Doc
-    const doc = DocumentApp.openById(GOOGLE_DOC_ID);
-    const body = doc.getBody();
+    // Pick the year folder - data is organized by year level
+    const yearLevel = data.yearLevel || 'Unknown Year';
+    const yearFolder = getOrCreateYearFolder(yearLevel);
 
-    const yearLevel = data.yearLevel || 'Year 8';
+    // Create a per-save Google Doc in the year folder
     const currentTerm = data.currentTerm || 'Unknown Term';
-
-    if (body.getNumChildren() === 0 || body.getText().trim() === '') {
-      body.appendParagraph('GPA Records').setHeading(DocumentApp.ParagraphHeading.HEADING1);
-      body.appendParagraph('Saved GPA snapshots from the GPA Calculator.');
-      body.appendParagraph('');
-    }
+    const timestamp = new Date(data.timestamp);
+    const stampLabel = Utilities.formatDate(timestamp, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
+    const fileName = `${data.studentName} - ${yearLevel} ${currentTerm} - ${stampLabel}`;
+    const doc = DocumentApp.create(fileName);
+    const body = doc.getBody();
+    const docFile = DriveApp.getFileById(doc.getId());
+    docFile.moveTo(yearFolder);
 
     // Format the data
-    const timestamp = new Date(data.timestamp).toLocaleString();
+    const timestampLabel = timestamp.toLocaleString();
     const completedSubjects = Number(data.completedSubjects || 0);
     const totalSubjects = Number(data.totalSubjects || (data.subjects || []).length);
     const subjectsText = data.subjects
       .map(s => `${s.subject}: ${s.finalGrade || 'Incomplete'}`)
       .join(', ');
 
-    body.appendParagraph('');
-    body.appendParagraph(`${data.studentName} - ${yearLevel} ${currentTerm}`).setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    body.appendParagraph(`Saved at: ${timestamp}`);
+    body.appendParagraph(`${data.studentName} - ${yearLevel} ${currentTerm}`).setHeading(DocumentApp.ParagraphHeading.HEADING1);
+    body.appendParagraph(`Saved at: ${timestampLabel}`);
     body.appendParagraph(`GPA: ${data.gpa || data.currentGpa || 'N/A'} out of 15.00`);
     body.appendParagraph(`Subjects counted: ${completedSubjects}/${totalSubjects}`);
-    body.appendParagraph(`Subjects: ${subjectsText}`);
-    
+    body.appendParagraph('');
+    body.appendParagraph('Subjects').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+    body.appendParagraph(subjectsText);
+
     // Save the document
     doc.saveAndClose();
-    
+
     // Return success response. The web app posts with no-cors, so the browser
     // does not need custom response headers from Apps Script.
     return ContentService.createTextOutput(
       JSON.stringify({
         success: true,
         message: `Successfully saved ${data.studentName}'s ${yearLevel} ${currentTerm} GPA (${data.gpa || data.currentGpa}) to Google Docs!`,
-        docUrl: `https://docs.google.com/document/d/${GOOGLE_DOC_ID}/edit`
+        docUrl: docFile.getUrl()
       })
     )
     .setMimeType(ContentService.MimeType.JSON);
