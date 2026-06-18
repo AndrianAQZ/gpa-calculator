@@ -6,7 +6,8 @@ import './App.css'
 // Each year level has its own: core subjects, elective list, and weights.
 // Year 8 uses the old school formula (1.0 / 0.6 / 0.3) with History renamed to
 // Humanities and three electives removed (Business, Geography, PE Extension).
-// Year 9+ uses contact-hours based weights (12 / 6).
+// Year 9+ uses the EXACT formula derived from 5 students' data
+// (E=459, M=669, S=768, H=126, HPE=250, elect=357).
 
 const LANGUAGE_SUBJECTS = new Set(['Spanish', 'Japanese'])
 
@@ -956,7 +957,7 @@ function App() {
             onClick={() => handleYearSelect(9)}
           >
             <span className="gpa-year-option-kicker">Year 9 and above</span>
-            <span className="gpa-year-option-title">Contact-hour formula</span>
+            <span className="gpa-year-option-title">Senior school formula</span>
             <span className="gpa-year-option-note">Four elective slots with the full list including PE Extension</span>
           </button>
         </div>
