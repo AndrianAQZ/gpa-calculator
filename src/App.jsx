@@ -346,30 +346,9 @@ function App() {
   }
 
   function calculateSubjectFinalGrade(subject) {
-    const mode = gradeEntryModes[subject] || 'final'
-
-    if (mode === 'final') {
-      const directGrade = directFinalGrades[subject]
-      if (!directGrade) return null
-      return { grade: directGrade, points: GRADES[directGrade] }
-    }
-
-    const overrideGrade = termFinalGrades[subject]
-    if (overrideGrade && GRADES[overrideGrade]) {
-      return { grade: overrideGrade, points: GRADES[overrideGrade] }
-    }
-
-    const subjectTerms = termGrades[subject]
-    if (!subjectTerms) return null
-
-    const enteredGrades = TERMS
-      .map(term => subjectTerms[term])
-      .filter(grade => grade && GRADES[grade])
-    if (enteredGrades.length === 0) return null
-
-    const totalPoints = enteredGrades.reduce((sum, grade) => sum + GRADES[grade], 0)
-    const averagePoints = totalPoints / enteredGrades.length
-    return { grade: getClosestGradeForPoints(averagePoints), points: averagePoints }
+    const directGrade = directFinalGrades[subject]
+    if (!directGrade) return null
+    return { grade: directGrade, points: GRADES[directGrade] }
   }
 
   function calculateGPA(excludePredicted = false) {
@@ -565,7 +544,7 @@ function App() {
       }
     })
     setFinalGrades(newFinalGrades)
-  }, [termGrades, directFinalGrades, gradeEntryModes, selectedSubjects, termFinalGrades])
+  }, [directFinalGrades, selectedSubjects])
 
   useEffect(() => {
     if (selectedSubjects.length > 0) {
@@ -839,43 +818,6 @@ function App() {
         <Settings aria-hidden="true" />
       </button>
     </header>
-  )
-
-  const renderGradeSummary = (showOnlyEntered = false, allowClick = false, navigateToSubject = null) => (
-    <div className="gpa-grade-list" aria-live="polite" aria-atomic="false">
-      {selectedSubjects
-        .filter(subject => !showOnlyEntered || finalGrades[subject])
-        .map(subject => {
-          const grade = finalGrades[subject]
-          const isPredicted = predictedSubjects[subject]
-          const rowContent = (
-            <>
-              <span className="gpa-grade-subject">{subject}</span>
-              <span className={`gpa-grade-column${grade ? '' : ' is-empty'}`}>
-                {grade ? grade.grade : 'Not entered'}
-                {isPredicted ? <span className="gpa-predicted-badge" title="Excluded from base GPA">predicted</span> : null}
-              </span>
-            </>
-          )
-          if (allowClick && navigateToSubject) {
-            return (
-              <button
-                type="button"
-                key={subject}
-                className="gpa-grade-row gpa-grade-row-clickable"
-                onClick={() => navigateToSubject(subject)}
-              >
-                {rowContent}
-              </button>
-            )
-          }
-          return (
-            <div className="gpa-grade-row" key={subject}>
-              {rowContent}
-            </div>
-          )
-        })}
-    </div>
   )
 
   const renderRequirements = () => {
@@ -1179,7 +1121,7 @@ function App() {
           <div className="gpa-result-subtitle">
             {(() => {
               if (!closestGpaGrade || gpa == null || gpa <= 0) return 'Add grades to see your GPA'
-              const isExactGrade = Object.values(GRADES).some(v => Math.abs(v - gpa) < 0.05)
+              const isExactGrade = Object.values(GRADES).some(v => Math.abs(v - gpa) < 0.01)
               if (isExactGrade) return `Sits at a ${closestGpaGrade}`
               const floorGrade = getFloorGradeForPoints(gpa)
               const ceilingGrade = getCeilingGradeForPoints(gpa)
