@@ -34,7 +34,7 @@ const YEAR_CURRICULA = {
     },
     electiveWeight: 0.3,
     languageWeight: 0.6,
-    maxElectives: 4,
+    maxElectives: 3,
     label: 'Year 8'
   },
   9: {
