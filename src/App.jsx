@@ -160,11 +160,13 @@ const THEME_PRESETS = {
   }
 }
 
-const createDefaultGradeModes = () =>
-  CORE_SUBJECTS.reduce((acc, subject) => {
+const createDefaultGradeModes = (year = 9) => {
+  const curr = YEAR_CURRICULA[year] || YEAR_CURRICULA[9]
+  return curr.core.reduce((acc, subject) => {
     acc[subject] = 'final'
     return acc
   }, {})
+}
 
 const getDetectedTerm = () => {
   const month = new Date().getMonth()
@@ -195,13 +197,20 @@ const getCeilingGradeForPoints = (points) => {
   return match || null
 }
 
+const getFloorGradeForPoints = (points) => {
+  const normalizedPoints = Math.min(MAX_GPA_VALUE, points)
+  const match = GRADE_OPTIONS.find(grade => GRADES[grade] <= normalizedPoints)
+  return match || null
+}
+
 const sanitizePersistedSubjects = (persistedSubjects, year = 9) => {
   const curr = YEAR_CURRICULA[year] || YEAR_CURRICULA[9]
   if (!Array.isArray(persistedSubjects)) {
     return [...curr.core]
   }
 
-  const availableSubjects = Object.keys(SUBJECTS)
+  const yearSubjects = getSubjectsForYear(year)
+  const availableSubjects = Object.keys(yearSubjects)
   const uniquePersisted = [...new Set(persistedSubjects.filter(subject => availableSubjects.includes(subject)))]
   const persistedElectives = uniquePersisted
     .filter(subject => !curr.core.includes(subject))
@@ -253,7 +262,7 @@ const isInappropriateName = (name) => {
   if (filtered.some(word => tokens.includes(word))) return true
 
   const specialCharCount = (lowerName.match(/[^a-z\s\-']/g) || []).length
-  return specialCharCount > 4 || lowerName.replace(/\s/g, '').length < 2 || /(.)\1{5,}/.test(lowerName)
+  return specialCharCount > 3 || lowerName.replace(/\s/g, '').length < 2 || /(.)\1{4,}/.test(lowerName)
 }
 
 function App() {
@@ -712,7 +721,7 @@ function App() {
     setCurrentStep('selection')
     setSelectedSubjects([...YEAR_CURRICULA[yearLevel || 9].core])
     setActiveSubjectIndex(0)
-    setGradeEntryModes(createDefaultGradeModes())
+    setGradeEntryModes(createDefaultGradeModes(yearLevel || 9))
     setTermGrades({})
     setDirectFinalGrades({})
     setTermFinalGrades({})
@@ -728,8 +737,14 @@ function App() {
     setTermSelectionMode('auto')
   }
 
-  const persistLocalGpaSnapshot = () => {
-    return true
+  const persistLocalGpaSnapshot = (payload) => {
+    try {
+      const snapshotKey = `gpa-calculator-snapshot-${Date.now()}`
+      window.localStorage.setItem(snapshotKey, JSON.stringify(payload))
+      return true
+    } catch {
+      return false
+    }
   }
 
   const saveSnapshotToGoogleDoc = async () => {
@@ -891,7 +906,7 @@ function App() {
     setYearLevel(year)
     setSelectedSubjects([...YEAR_CURRICULA[year].core])
     setActiveSubjectIndex(0)
-    setGradeEntryModes(createDefaultGradeModes())
+    setGradeEntryModes(createDefaultGradeModes(year))
     setTermGrades({})
     setDirectFinalGrades({})
     setTermFinalGrades({})
@@ -918,7 +933,7 @@ function App() {
     setYearLevel(year)
     setSelectedSubjects([...YEAR_CURRICULA[year].core])
     setActiveSubjectIndex(0)
-    setGradeEntryModes(createDefaultGradeModes())
+    setGradeEntryModes(createDefaultGradeModes(year))
     setTermGrades({})
     setDirectFinalGrades({})
     setTermFinalGrades({})
@@ -966,23 +981,32 @@ function App() {
   )
 
   const renderSelectionScreen = () => {
+    const curr = YEAR_CURRICULA[yearLevel || 9]
+    const isYear8 = (yearLevel || 9) === 8
+    const langNote = isYear8
+      ? `Count for ${curr.languageWeight} of a regular subject in your GPA`
+      : 'Same weight as other electives'
+    const electiveNote = isYear8
+      ? `Count for ${curr.electiveWeight} in your GPA`
+      : 'Same weight as other electives'
+
     const electiveGroups = [
       {
         key: 'languages',
         kicker: 'Languages',
-        note: 'Count for 0.6 of a regular subject in your GPA',
+        note: langNote,
         subjects: yearElectives.filter(s => LANGUAGE_SUBJECTS.has(s) || s === 'English as an Other Language')
       },
       {
         key: 'creative',
         kicker: 'Performance and visual',
-        note: 'Count for 0.3 in your GPA',
+        note: electiveNote,
         subjects: yearElectives.filter(s => ['Drama', 'Music', 'Visual Art', 'Film, Television and New Media'].includes(s))
       },
       {
         key: 'applied',
         kicker: 'Applied and technology',
-        note: 'Count for 0.3 in your GPA',
+        note: electiveNote,
         subjects: yearElectives.filter(s => ['Business', 'Design', 'Digital Solutions', 'Geography', 'Physical Education (Extension)'].includes(s))
       }
     ].filter(g => g.subjects.length > 0)
@@ -1157,10 +1181,12 @@ function App() {
               if (!closestGpaGrade || gpa == null || gpa <= 0) return 'Add grades to see your GPA'
               const isExactGrade = Object.values(GRADES).some(v => Math.abs(v - gpa) < 0.05)
               if (isExactGrade) return `Sits at a ${closestGpaGrade}`
-              const next = getCeilingGradeForPoints(gpa + 1)
-              if (next && next !== closestGpaGrade) {
-                const article = /^[AEIOU]/.test(closestGpaGrade) ? 'an' : 'a'
-                return `Sits between ${article} ${closestGpaGrade} and a ${next}`
+              const floorGrade = getFloorGradeForPoints(gpa)
+              const ceilingGrade = getCeilingGradeForPoints(gpa)
+              if (floorGrade && ceilingGrade && floorGrade !== ceilingGrade) {
+                const floorArticle = /^[AEIOU]/.test(floorGrade) ? 'an' : 'a'
+                const ceilingArticle = /^[AEIOU]/.test(ceilingGrade) ? 'an' : 'a'
+                return `Sits between ${floorArticle} ${floorGrade} and ${ceilingArticle} ${ceilingGrade}`
               }
               const article = /^[AEIOU]/.test(closestGpaGrade) ? 'an' : 'a'
               return `Sits at about ${article} ${closestGpaGrade}`
