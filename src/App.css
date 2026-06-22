@@ -810,6 +810,93 @@ h1, h2, h3, h4 {
   font-weight: 800;
 }
 
+/* --- Mode Toggle --- */
+
+.gpa-mode-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gpa-mode-toggle {
+  min-height: 34px;
+  padding: 4px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+}
+
+.gpa-mode-toggle:hover {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.gpa-mode-toggle.is-terms {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+/* --- Term Grade Entry --- */
+
+.gpa-term-grades {
+  display: grid;
+  gap: 12px;
+}
+
+.gpa-term-grade-row {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.gpa-term-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.gpa-term-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.gpa-term-button {
+  min-width: 36px;
+  height: 34px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  transition: border-color 100ms ease, background 100ms ease;
+}
+
+.gpa-term-button:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.gpa-term-button.is-selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
 /* --- Grade Button Table --- */
 
 .gpa-grade-button-table {

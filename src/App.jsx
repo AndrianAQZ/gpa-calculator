@@ -53,17 +53,16 @@ const YEAR_CURRICULA = {
       'Spanish',
       'Visual Art'
     ],
-    // EXACT formula derived from 5 students' actual GPAs.
+    // Weights derived by reverse-engineering from actual school GPA data.
     // Each subject's weight in the weighted average is:
     //   English: 459 (period ratio 9/7)
     //   Mathematics: 669 (period ratio 223/119)
     //   Science: 768 (period ratio 256/119)
     //   History: 126 (period ratio 42/119)
     //   Health and Physical Education: 250 (period ratio 250/357)
-    //   All electives: 357 (1.0 normalized)
-    //   PE Extension: 357 (same as electives)
-    // Sum of weights = 459 + 669 + 768 + 250 + 126 + 6*357 = 4409
-    // All 5 students' actual GPAs match to within 0.000001 (rounding error).
+    //   All electives: 167
+    // Sum of core weights = 459 + 669 + 768 + 250 + 126 = 2272
+    // Maximum electives = 4, so max total weight = 2272 + 4*167 = 2940
     coreWeights: {
       English: 459,
       'Health and Physical Education': 250,
@@ -71,9 +70,9 @@ const YEAR_CURRICULA = {
       Mathematics: 669,
       Science: 768
     },
-    peExtWeight: 357,
-    electiveWeight: 357,
-    languageWeight: 357,
+    peExtWeight: 167,
+    electiveWeight: 167,
+    languageWeight: 167,
     maxElectives: 4,
     label: 'Year 9 and above'
   }
@@ -182,7 +181,7 @@ const getClosestGradeForPoints = (points) => {
 
   Object.entries(GRADES).forEach(([grade, value]) => {
     const diff = Math.abs(value - points)
-    if (diff < closestDiff) {
+    if (diff <= closestDiff) {
       closestGrade = grade
       closestDiff = diff
     }
@@ -345,10 +344,52 @@ function App() {
     '--success-soft': `${theme.accent}20`
   }
 
+  const getTermsForSubject = () => {
+    const currentTermIndex = TERMS.indexOf(currentTerm)
+    if (currentTermIndex < 0) return TERMS
+    return TERMS.slice(0, currentTermIndex + 1)
+  }
+
   function calculateSubjectFinalGrade(subject) {
-    const directGrade = directFinalGrades[subject]
-    if (!directGrade) return null
-    return { grade: directGrade, points: GRADES[directGrade] }
+    const mode = gradeEntryModes[subject] || 'final'
+
+    if (mode === 'final') {
+      const directGrade = directFinalGrades[subject]
+      if (!directGrade) return null
+      return { grade: directGrade, points: GRADES[directGrade] }
+    }
+
+    // Terms mode — average entered term grades to find the closest letter grade
+    const overrideGrade = termFinalGrades[subject]
+    if (overrideGrade && GRADES[overrideGrade] !== undefined) {
+      return { grade: overrideGrade, points: GRADES[overrideGrade] }
+    }
+
+    const subjectTerms = termGrades[subject]
+    const relevantTerms = getTermsForSubject()
+    if (!subjectTerms || relevantTerms.length === 0) return null
+
+    const enteredGrades = relevantTerms
+      .map(term => subjectTerms[term])
+      .filter(grade => grade && grade !== '' && GRADES[grade] !== undefined)
+
+    if (enteredGrades.length === 0) return null
+
+    const totalPoints = enteredGrades.reduce((sum, grade) => sum + GRADES[grade], 0)
+    const averagePoints = totalPoints / enteredGrades.length
+
+    // Find closest grade with <= tie-breaking (rounds DOWN on ties)
+    let closestGrade = 'F-'
+    let closestDiff = Math.abs(GRADES['F-'] - averagePoints)
+    Object.entries(GRADES).forEach(([grade, value]) => {
+      const diff = Math.abs(value - averagePoints)
+      if (diff <= closestDiff) {
+        closestGrade = grade
+        closestDiff = diff
+      }
+    })
+
+    return { grade: closestGrade, points: GRADES[closestGrade] }
   }
 
   function calculateGPA(excludePredicted = false) {
@@ -544,7 +585,7 @@ function App() {
       }
     })
     setFinalGrades(newFinalGrades)
-  }, [directFinalGrades, selectedSubjects])
+  }, [directFinalGrades, gradeEntryModes, termGrades, termFinalGrades, currentTerm, selectedSubjects])
 
   useEffect(() => {
     if (selectedSubjects.length > 0) {
@@ -618,8 +659,34 @@ function App() {
   }
 
   const handleGradeSelect = (subject, grade) => {
-    setGradeEntryModes(prev => ({ ...prev, [subject]: 'final' }))
     setDirectFinalGrades(prev => ({ ...prev, [subject]: grade }))
+  }
+
+  const handleGradeEntryModeToggle = (subject) => {
+    const currentMode = gradeEntryModes[subject] || 'final'
+    const newMode = currentMode === 'terms' ? 'final' : 'terms'
+
+    setGradeEntryModes(prev => ({ ...prev, [subject]: newMode }))
+
+    if (newMode === 'final') {
+      const newTermGrades = { ...termGrades }
+      delete newTermGrades[subject]
+      setTermGrades(newTermGrades)
+    } else {
+      const newDirectFinalGrades = { ...directFinalGrades }
+      delete newDirectFinalGrades[subject]
+      setDirectFinalGrades(newDirectFinalGrades)
+    }
+  }
+
+  const handleTermGradeChange = (subject, term, grade) => {
+    setTermGrades(prev => ({
+      ...prev,
+      [subject]: {
+        ...(prev[subject] || {}),
+        [term]: grade
+      }
+    }))
   }
 
   const handleTogglePredicted = (subject) => {
@@ -1056,7 +1123,14 @@ function App() {
           <h1 key={activeSubject}>{activeSubject}</h1>
           <span>{activeSubjectIndex + 1} / {selectedSubjects.length}</span>
         </div>
-        <div className="gpa-prediction-row">
+        <div className="gpa-mode-row">
+          <button
+            type="button"
+            className={`gpa-mode-toggle${(gradeEntryModes[activeSubject] || 'final') === 'terms' ? ' is-terms' : ''}`}
+            onClick={() => handleGradeEntryModeToggle(activeSubject)}
+          >
+            {(gradeEntryModes[activeSubject] || 'final') === 'terms' ? 'Using term grades' : 'Enter term grades'}
+          </button>
           <button
             type="button"
             className={`gpa-prediction-toggle${predictedSubjects[activeSubject] ? ' is-predicted' : ''}`}
@@ -1066,26 +1140,52 @@ function App() {
           </button>
         </div>
         <div key={selectedGrade || 'empty'} className={`gpa-selected-grade-display${selectedGrade ? ' gpa-grade-just-selected' : ''}`}>
-          {selectedGrade || <span className="gpa-no-grade">Pick a grade below</span>}
+          {selectedGrade || <span className="gpa-no-grade">{gradeEntryModes[activeSubject] === 'terms' ? 'Enter a term grade' : 'Pick a grade below'}</span>}
         </div>
-        <div className="gpa-grade-button-table" aria-label={`Grade buttons for ${activeSubject}`}>
-          {GRADE_ROWS.map((row, rowIndex) => (
-            <div className="gpa-grade-button-row" key={row.join('-')}>
-              {row.map((grade, colIndex) => (
-                <button
-                  type="button"
-                  key={grade}
-                  className={`gpa-grade-button${selectedGrade === grade ? ' is-selected' : ''}`}
-                  onClick={() => handleGradeSelect(activeSubject, grade)}
-                  aria-pressed={selectedGrade === grade}
-                  style={{ animationDelay: `${(rowIndex * 3 + colIndex) * 25}ms` }}
-                >
-                  {grade}
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
+        {(gradeEntryModes[activeSubject] || 'final') === 'terms' ? (
+          <div className="gpa-term-grades">
+            {getTermsForSubject().map(term => {
+              const termGrade = termGrades[activeSubject]?.[term] || ''
+              return (
+                <div key={term} className="gpa-term-grade-row">
+                  <span className="gpa-term-label">{term}</span>
+                  <div className="gpa-term-buttons">
+                    {GRADE_OPTIONS.map(grade => (
+                      <button
+                        type="button"
+                        key={grade}
+                        className={`gpa-term-button${termGrade === grade ? ' is-selected' : ''}`}
+                        onClick={() => handleTermGradeChange(activeSubject, term, grade)}
+                        aria-pressed={termGrade === grade}
+                      >
+                        {grade}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="gpa-grade-button-table" aria-label={`Grade buttons for ${activeSubject}`}>
+            {GRADE_ROWS.map((row, rowIndex) => (
+              <div className="gpa-grade-button-row" key={row.join('-')}>
+                {row.map((grade, colIndex) => (
+                  <button
+                    type="button"
+                    key={grade}
+                    className={`gpa-grade-button${selectedGrade === grade ? ' is-selected' : ''}`}
+                    onClick={() => handleGradeSelect(activeSubject, grade)}
+                    aria-pressed={selectedGrade === grade}
+                    style={{ animationDelay: `${(rowIndex * 3 + colIndex) * 25}ms` }}
+                  >
+                    {grade}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
         <div className="gpa-grade-nav-buttons">
           <button
             type="button"
