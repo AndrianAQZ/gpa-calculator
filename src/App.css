@@ -54,6 +54,18 @@ body {
   font-feature-settings: "ss01", "cv11";
 }
 
+/* Subtle paper grain texture — breaks the flat digital feel */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+
 button,
 input,
 select {
@@ -63,11 +75,12 @@ select {
 button {
   cursor: pointer;
   letter-spacing: -0.005em;
+  font-family: inherit;
 }
 
 h1, h2, h3, h4 {
-  font-family: "Inter", "SF Pro Display", ui-sans-serif, system-ui, sans-serif;
-  letter-spacing: -0.018em;
+  font-family: "Fraunces", "Georgia", "Times New Roman", serif;
+  letter-spacing: -0.02em;
 }
 
 @keyframes pageIn {
@@ -134,6 +147,8 @@ h1, h2, h3, h4 {
 /* --- App Container --- */
 
 .gpa-final-app {
+  position: relative;
+  z-index: 1;
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--bg);
@@ -150,6 +165,7 @@ h1, h2, h3, h4 {
   padding: 8px 16px;
   background: var(--primary);
   color: #fff;
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 14px;
   font-weight: 600;
   border-radius: 0 0 8px 8px;
@@ -191,12 +207,14 @@ h1, h2, h3, h4 {
 }
 
 .gpa-final-topbar-name {
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 
 .gpa-final-topbar-subtitle {
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 12px;
   font-weight: 500;
   color: var(--text-muted);
@@ -215,12 +233,15 @@ h1, h2, h3, h4 {
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
 }
 
 .gpa-icon-button:hover {
   border-color: var(--line-strong);
   background: var(--bg);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
 }
 
 .gpa-icon-button:active {
@@ -267,15 +288,17 @@ h1, h2, h3, h4 {
 
 .gpa-subject-group-heading {
   margin: 0;
-  font-size: 15px;
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text);
+  color: var(--text-muted);
 }
 
 .gpa-subject-group-note {
   color: var(--text-muted);
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
   font-weight: 500;
 }
@@ -288,8 +311,9 @@ h1, h2, h3, h4 {
 
 .gpa-selection-question {
   margin: 0;
-  font-size: clamp(28px, 3.4vw, 36px);
+  font-size: clamp(26px, 3.2vw, 34px);
   font-weight: 800;
+  font-variation-settings: "opsz" 72;
   letter-spacing: -0.02em;
   line-height: 1.1;
   color: var(--text);
@@ -298,6 +322,7 @@ h1, h2, h3, h4 {
 
 .gpa-selection-help {
   margin: 0;
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.5;
   color: var(--text-muted);
@@ -321,18 +346,26 @@ h1, h2, h3, h4 {
   border-radius: var(--radius);
   background: var(--surface);
   animation: cardIn 200ms cubic-bezier(0.22, 0.8, 0.22, 1) both;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.gpa-core-item:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-soft);
 }
 
 .gpa-core-name {
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 15px;
   font-weight: 600;
 }
 
 .gpa-core-weight {
-  font-size: 12px;
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: var(--text-muted);
 }
 
@@ -355,6 +388,7 @@ h1, h2, h3, h4 {
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 14px;
   font-weight: 600;
   text-align: left;
@@ -381,6 +415,7 @@ h1, h2, h3, h4 {
   border-color: var(--primary);
   background: var(--primary-soft);
   box-shadow: inset 0 0 0 1px var(--primary);
+  transform: translateY(-1px);
 }
 
 .gpa-elective-button.is-selected svg {
@@ -411,10 +446,11 @@ h1, h2, h3, h4 {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 12px;
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   color: var(--text-muted);
 }
 
@@ -429,8 +465,9 @@ h1, h2, h3, h4 {
 
 .gpa-year-question {
   margin: 0;
-  font-size: clamp(40px, 5.6vw, 64px);
+  font-size: clamp(38px, 5.2vw, 60px);
   font-weight: 800;
+  font-variation-settings: "opsz" 144;
   letter-spacing: -0.03em;
   line-height: 1.05;
   color: var(--text);
@@ -439,6 +476,7 @@ h1, h2, h3, h4 {
 
 .gpa-year-help {
   margin: 0;
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.55;
   color: var(--text-muted);
@@ -468,7 +506,8 @@ h1, h2, h3, h4 {
 .gpa-year-option:hover {
   border-color: var(--primary);
   background: var(--primary-soft);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-lift);
+  transform: translateY(-2px);
 }
 
 .gpa-year-option:focus-visible {
@@ -490,12 +529,15 @@ h1, h2, h3, h4 {
 }
 
 .gpa-year-option-title {
+  font-family: "Fraunces", "Georgia", serif;
   font-size: 22px;
   font-weight: 700;
+  font-variation-settings: "opsz" 36;
   letter-spacing: -0.02em;
 }
 
 .gpa-year-option-note {
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
   font-weight: 500;
   color: var(--text-muted);
@@ -526,12 +568,14 @@ h1, h2, h3, h4 {
   margin: 0;
   font-size: 24px;
   font-weight: 700;
+  font-variation-settings: "opsz" 48;
   letter-spacing: -0.01em;
 }
 
 .gpa-target-description {
   margin: 0;
   color: var(--text-muted);
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.5;
 }
@@ -596,6 +640,7 @@ h1, h2, h3, h4 {
   gap: 8px;
   padding: 0 18px;
   border-radius: var(--radius);
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 14px;
   font-weight: 600;
   transition: background 150ms ease, box-shadow 150ms ease, transform 150ms ease, border-color 150ms ease;
@@ -610,6 +655,7 @@ h1, h2, h3, h4 {
 .gpa-primary-action:hover:not(:disabled) {
   background: var(--primary-strong);
   box-shadow: var(--shadow-primary);
+  transform: translateY(-1px);
 }
 
 .gpa-primary-action:active:not(:disabled) {
@@ -634,6 +680,8 @@ h1, h2, h3, h4 {
 .gpa-reset-button:hover {
   border-color: var(--text);
   background: var(--bg);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
 }
 
 .gpa-secondary-action svg,
@@ -650,6 +698,11 @@ h1, h2, h3, h4 {
   background: var(--surface);
   box-shadow: var(--shadow-soft);
   animation: cardIn 200ms cubic-bezier(0.22, 0.8, 0.22, 1) both;
+  transition: box-shadow 200ms ease;
+}
+
+.gpa-card:hover {
+  box-shadow: var(--shadow-lift);
 }
 
 /* --- Disclosure --- */
@@ -666,6 +719,7 @@ h1, h2, h3, h4 {
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 14px;
   font-weight: 600;
   text-align: left;
@@ -675,6 +729,8 @@ h1, h2, h3, h4 {
 .gpa-disclosure-button:hover {
   border-color: var(--line-strong);
   background: var(--bg);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
 }
 
 .gpa-disclosure-button:focus-visible {
@@ -683,6 +739,7 @@ h1, h2, h3, h4 {
 }
 
 .gpa-disclosure-meta {
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-muted);
@@ -711,11 +768,13 @@ h1, h2, h3, h4 {
   margin: 0;
   font-size: 26px;
   font-weight: 800;
+  font-variation-settings: "opsz" 72;
   letter-spacing: -0.02em;
   animation: cardIn 150ms cubic-bezier(0.22, 0.8, 0.22, 1) both;
 }
 
 .gpa-subject-heading-row span {
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 14px;
   font-weight: 500;
   color: var(--text-muted);
@@ -725,8 +784,10 @@ h1, h2, h3, h4 {
 /* --- Selected Grade Display --- */
 
 .gpa-selected-grade-display {
-  font-size: 36px;
+  font-family: "Fraunces", "Georgia", serif;
+  font-size: 38px;
   font-weight: 800;
+  font-variation-settings: "opsz" 72;
   color: var(--primary-strong);
   min-height: 44px;
   display: flex;
@@ -735,6 +796,7 @@ h1, h2, h3, h4 {
 
 .gpa-no-grade {
   color: var(--text-soft);
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 18px;
   font-weight: 500;
 }
@@ -759,6 +821,7 @@ h1, h2, h3, h4 {
   border-radius: 8px;
   background: var(--surface);
   color: var(--text-muted);
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
   font-weight: 600;
   transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
@@ -777,6 +840,7 @@ h1, h2, h3, h4 {
 
 .gpa-prediction-note {
   margin: 0;
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 12px;
   color: var(--text-soft);
 }
@@ -788,6 +852,7 @@ h1, h2, h3, h4 {
   border-radius: 4px;
   background: var(--primary-soft);
   color: var(--primary-strong);
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -801,8 +866,9 @@ h1, h2, h3, h4 {
   border-radius: 6px;
   background: var(--warning-soft);
   color: var(--warning);
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
-  font-weight: 550;
+  font-weight: 600;
   animation: slideUp 200ms cubic-bezier(0.22, 0.8, 0.22, 1) both;
 }
 
@@ -826,6 +892,7 @@ h1, h2, h3, h4 {
   border-radius: 8px;
   background: var(--surface);
   color: var(--text-muted);
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
   font-weight: 600;
   transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
@@ -857,6 +924,7 @@ h1, h2, h3, h4 {
 }
 
 .gpa-term-label {
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-muted);
@@ -880,6 +948,7 @@ h1, h2, h3, h4 {
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 12px;
   font-weight: 600;
   transition: border-color 100ms ease, background 100ms ease;
@@ -895,6 +964,7 @@ h1, h2, h3, h4 {
   background: var(--primary-soft);
   color: var(--primary-strong);
   box-shadow: inset 0 0 0 1px var(--primary);
+  transform: translateY(-1px);
 }
 
 /* --- Grade Button Table --- */
@@ -921,9 +991,13 @@ h1, h2, h3, h4 {
   color: var(--text);
   font-size: 16px;
   font-weight: 600;
-  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease, box-shadow 150ms ease, color 150ms ease;
   animation: cardIn 200ms cubic-bezier(0.22, 0.8, 0.22, 1) both;
   font-variant-numeric: tabular-nums;
+}
+
+.gpa-grade-button:hover:not(.is-selected) {
+  color: var(--primary);
 }
 
 .gpa-grade-button:hover {
@@ -940,7 +1014,8 @@ h1, h2, h3, h4 {
   border-color: var(--primary);
   background: var(--primary-soft);
   color: var(--primary-strong);
-  box-shadow: inset 0 0 0 1px var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary), 0 2px 8px rgba(31, 74, 46, 0.12);
+  transform: translateY(-1px);
 }
 
 /* --- Next Subject Button --- */
@@ -987,6 +1062,7 @@ h1, h2, h3, h4 {
 .gpa-settings-section h3 {
   margin: 0;
   letter-spacing: -0.01em;
+  font-variation-settings: "opsz" 36;
 }
 
 .gpa-lower-card h2 {
@@ -1004,13 +1080,16 @@ h1, h2, h3, h4 {
 }
 
 .gpa-target-number {
+  font-family: "Fraunces", "Georgia", serif;
   font-size: 20px;
   font-weight: 800;
+  font-variation-settings: "opsz" 48;
 }
 
 .gpa-card-note {
   margin: 0 0 12px;
   color: var(--text-muted);
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
   line-height: 1.45;
 }
@@ -1046,6 +1125,7 @@ h1, h2, h3, h4 {
 .gpa-grade-row-clickable:hover {
   background: var(--primary-soft);
   box-shadow: inset 0 0 0 1px var(--primary);
+  transform: translateX(2px);
 }
 
 .gpa-grade-row-clickable:active {
@@ -1060,13 +1140,14 @@ h1, h2, h3, h4 {
   min-width: 0;
   overflow-wrap: anywhere;
   font-size: 14px;
-  font-weight: 550;
+  font-weight: 600;
 }
 
 .gpa-grade-column {
   width: 5.5rem;
   justify-self: end;
   text-align: center;
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 14px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -1074,6 +1155,7 @@ h1, h2, h3, h4 {
 
 .gpa-grade-column.is-empty {
   color: var(--text-soft);
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 12px;
   font-weight: 500;
 }
@@ -1129,17 +1211,20 @@ h1, h2, h3, h4 {
 }
 
 .gpa-result-kicker {
-  font-size: 12px;
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   color: var(--text-muted);
 }
 
 .gpa-result-number {
-  font-size: clamp(40px, 4.8vw, 48px);
+  font-family: "Fraunces", "Georgia", serif;
+  font-size: clamp(44px, 5.2vw, 56px);
   line-height: 1;
-  font-weight: 800;
+  font-weight: 900;
+  font-variation-settings: "opsz" 144;
   color: var(--primary-strong);
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
@@ -1148,6 +1233,7 @@ h1, h2, h3, h4 {
 
 .gpa-result-subtitle {
   color: var(--text-muted);
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 14px;
   font-weight: 500;
   line-height: 1.5;
@@ -1158,6 +1244,7 @@ h1, h2, h3, h4 {
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 4px;
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
   color: var(--text-muted);
   font-weight: 500;
@@ -1171,6 +1258,7 @@ h1, h2, h3, h4 {
 .gpa-target-comparison {
   padding: 4px 10px;
   border-radius: 999px;
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -1192,10 +1280,11 @@ h1, h2, h3, h4 {
 
 .gpa-result-breakdown h3 {
   margin: 0 0 12px;
-  font-size: 12px;
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   color: var(--text-muted);
 }
 
@@ -1227,6 +1316,7 @@ h1, h2, h3, h4 {
   display: grid;
   gap: 6px;
   color: var(--text-muted);
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
   font-weight: 600;
 }
@@ -1235,9 +1325,10 @@ h1, h2, h3, h4 {
 .gpa-save-error,
 .gpa-quiet-warning {
   margin: 14px 0 0;
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
   line-height: 1.5;
-  font-weight: 550;
+  font-weight: 600;
 }
 
 .gpa-save-status {
@@ -1295,6 +1386,7 @@ h1, h2, h3, h4 {
 .gpa-settings-panel h2 {
   font-size: 22px;
   font-weight: 700;
+  font-variation-settings: "opsz" 48;
 }
 
 .gpa-settings-section {
@@ -1316,13 +1408,15 @@ h1, h2, h3, h4 {
 .gpa-settings-section h3 {
   font-size: 14px;
   font-weight: 700;
+  font-variation-settings: "opsz" 24;
 }
 
 .gpa-settings-section label {
   display: grid;
   gap: 6px;
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
-  font-weight: 550;
+  font-weight: 600;
   color: var(--text-muted);
 }
 
@@ -1339,6 +1433,7 @@ h1, h2, h3, h4 {
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -1348,6 +1443,8 @@ h1, h2, h3, h4 {
 .gpa-theme-presets button:hover {
   border-color: var(--line-strong);
   background: var(--bg);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
 }
 
 .gpa-theme-colors {
@@ -1360,8 +1457,9 @@ h1, h2, h3, h4 {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
-  font-weight: 550;
+  font-weight: 600;
 }
 
 .gpa-theme-colors input[type="color"] {
@@ -1384,6 +1482,7 @@ h1, h2, h3, h4 {
 
 .gpa-settings-note {
   margin: 0;
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 12px;
   line-height: 1.45;
   color: var(--text-muted);
@@ -1405,6 +1504,7 @@ h1, h2, h3, h4 {
   border: none;
   background: transparent;
   color: var(--text-muted);
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -1443,6 +1543,7 @@ h1, h2, h3, h4 {
 
 .gpa-year-confirm p {
   margin: 0;
+  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-size: 13px;
   line-height: 1.45;
   color: var(--text);
