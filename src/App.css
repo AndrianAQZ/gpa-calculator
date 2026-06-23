@@ -492,9 +492,9 @@ h1, h2, h3, h4 {
 
 .gpa-year-option {
   display: grid;
-  gap: 6px;
-  text-align: left;
-  padding: 24px;
+  place-items: center;
+  text-align: center;
+  padding: 40px 24px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   background: var(--surface);
@@ -520,28 +520,12 @@ h1, h2, h3, h4 {
   transform: scale(0.985);
 }
 
-.gpa-year-option-kicker {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--text-muted);
-}
-
 .gpa-year-option-title {
   font-family: "Fraunces", "Georgia", serif;
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 700;
-  font-variation-settings: "opsz" 36;
+  font-variation-settings: "opsz" 48;
   letter-spacing: -0.02em;
-}
-
-.gpa-year-option-note {
-  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted);
-  line-height: 1.4;
 }
 
 /* --- Target Stage --- */
@@ -874,97 +858,6 @@ h1, h2, h3, h4 {
 
 .gpa-predicted-note-row strong {
   font-weight: 800;
-}
-
-/* --- Mode Toggle --- */
-
-.gpa-mode-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.gpa-mode-toggle {
-  min-height: 34px;
-  padding: 4px 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text-muted);
-  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
-}
-
-.gpa-mode-toggle:hover {
-  border-color: var(--line-strong);
-  color: var(--text);
-}
-
-.gpa-mode-toggle.is-terms {
-  border-color: var(--primary);
-  background: var(--primary-soft);
-  color: var(--primary-strong);
-}
-
-/* --- Term Grade Entry --- */
-
-.gpa-term-grades {
-  display: grid;
-  gap: 12px;
-}
-
-.gpa-term-grade-row {
-  display: grid;
-  grid-template-columns: 64px 1fr;
-  gap: 10px;
-  align-items: center;
-}
-
-.gpa-term-label {
-  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
-.gpa-term-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.gpa-term-button {
-  min-width: 36px;
-  height: 34px;
-  padding: 0 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text);
-  font-family: "Inter", "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  transition: border-color 100ms ease, background 100ms ease;
-}
-
-.gpa-term-button:hover {
-  border-color: var(--primary);
-  background: var(--primary-soft);
-}
-
-.gpa-term-button.is-selected {
-  border-color: var(--primary);
-  background: var(--primary-soft);
-  color: var(--primary-strong);
-  box-shadow: inset 0 0 0 1px var(--primary);
-  transform: translateY(-1px);
 }
 
 /* --- Grade Button Table --- */

@@ -119,7 +119,6 @@ const GRADE_ROWS = [
 const GRADE_OPTIONS = Object.keys(GRADES)
 const MIN_GPA_VALUE = 0.1
 const MAX_GPA_VALUE = 15
-const TERMS = ['Term 1', 'Term 2', 'Term 3', 'Term 4']
 const GOOGLE_APPS_SCRIPT_URL = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbxlIQmLRq6a2iwm3CUqN92skJP36iUuX26XYE6jfQ96K-TO8ULQhKdFR7mBlTkCln4/exec'
 const LOCAL_STORAGE_KEY = 'gpa-calculator-state-v1'
 const THEME_STORAGE_KEY = 'gpa-calculator-theme-v1'
@@ -157,22 +156,6 @@ const THEME_PRESETS = {
     text: '#f8fafc',
     accent: '#22c55e'
   }
-}
-
-const createDefaultGradeModes = (year = 9) => {
-  const curr = YEAR_CURRICULA[year] || YEAR_CURRICULA[9]
-  return curr.core.reduce((acc, subject) => {
-    acc[subject] = 'final'
-    return acc
-  }, {})
-}
-
-const getDetectedTerm = () => {
-  const month = new Date().getMonth()
-  if (month <= 2) return 'Term 1'
-  if (month <= 5) return 'Term 2'
-  if (month <= 8) return 'Term 3'
-  return 'Term 4'
 }
 
 const getClosestGradeForPoints = (points) => {
@@ -269,10 +252,7 @@ function App() {
   const [currentStep, setCurrentStep] = useState('year')
   const [selectedSubjects, setSelectedSubjects] = useState(() => [...YEAR_CURRICULA[9].core])
   const [activeSubjectIndex, setActiveSubjectIndex] = useState(0)
-  const [gradeEntryModes, setGradeEntryModes] = useState(() => createDefaultGradeModes())
-  const [termGrades, setTermGrades] = useState({})
   const [directFinalGrades, setDirectFinalGrades] = useState({})
-  const [termFinalGrades, setTermFinalGrades] = useState({})
   const [expectedGrades, setExpectedGrades] = useState({})
   const [predictedSubjects, setPredictedSubjects] = useState({})
   const [finalGrades, setFinalGrades] = useState({})
@@ -283,8 +263,6 @@ function App() {
   const [settingsTargetInput, setSettingsTargetInput] = useState('')
   const [studentName, setStudentName] = useState('')
   const [studentYearLevel, setStudentYearLevel] = useState('')
-  const [currentTerm, setCurrentTerm] = useState(() => getDetectedTerm())
-  const [termSelectionMode, setTermSelectionMode] = useState('auto')
   const [showSettings, setShowSettings] = useState(false)
   const [yearChangeConfirm, setYearChangeConfirm] = useState(null)
   const [isTargetTransitioning, setIsTargetTransitioning] = useState(false)
@@ -344,52 +322,10 @@ function App() {
     '--success-soft': `${theme.accent}20`
   }
 
-  const getTermsForSubject = () => {
-    const currentTermIndex = TERMS.indexOf(currentTerm)
-    if (currentTermIndex < 0) return TERMS
-    return TERMS.slice(0, currentTermIndex + 1)
-  }
-
   function calculateSubjectFinalGrade(subject) {
-    const mode = gradeEntryModes[subject] || 'final'
-
-    if (mode === 'final') {
-      const directGrade = directFinalGrades[subject]
-      if (!directGrade) return null
-      return { grade: directGrade, points: GRADES[directGrade] }
-    }
-
-    // Terms mode — average entered term grades to find the closest letter grade
-    const overrideGrade = termFinalGrades[subject]
-    if (overrideGrade && GRADES[overrideGrade] !== undefined) {
-      return { grade: overrideGrade, points: GRADES[overrideGrade] }
-    }
-
-    const subjectTerms = termGrades[subject]
-    const relevantTerms = getTermsForSubject()
-    if (!subjectTerms || relevantTerms.length === 0) return null
-
-    const enteredGrades = relevantTerms
-      .map(term => subjectTerms[term])
-      .filter(grade => grade && grade !== '' && GRADES[grade] !== undefined)
-
-    if (enteredGrades.length === 0) return null
-
-    const totalPoints = enteredGrades.reduce((sum, grade) => sum + GRADES[grade], 0)
-    const averagePoints = totalPoints / enteredGrades.length
-
-    // Find closest grade with <= tie-breaking (rounds DOWN on ties)
-    let closestGrade = 'F-'
-    let closestDiff = Math.abs(GRADES['F-'] - averagePoints)
-    Object.entries(GRADES).forEach(([grade, value]) => {
-      const diff = Math.abs(value - averagePoints)
-      if (diff <= closestDiff) {
-        closestGrade = grade
-        closestDiff = diff
-      }
-    })
-
-    return { grade: closestGrade, points: GRADES[closestGrade] }
+    const directGrade = directFinalGrades[subject]
+    if (!directGrade) return null
+    return { grade: directGrade, points: GRADES[directGrade] }
   }
 
   function calculateGPA(excludePredicted = false) {
@@ -490,27 +426,18 @@ function App() {
       const parsed = JSON.parse(raw)
       const persistedYearRaw = (parsed?.yearLevel === 8 || parsed?.yearLevel === 9) ? parsed.yearLevel : 9
       const hydratedSubjects = sanitizePersistedSubjects(parsed?.selectedSubjects, persistedYearRaw)
-      const hydratedModes = hydratedSubjects.reduce((acc, subject) => {
-        acc[subject] = parsed?.gradeEntryModes?.[subject] === 'terms' ? 'terms' : 'final'
-        return acc
-      }, {})
       const safeStep = ['year', 'selection', 'target', 'gradeEntry', 'results'].includes(parsed?.currentStep)
         ? parsed.currentStep
         : 'selection'
 
       setSelectedSubjects(hydratedSubjects)
-      setGradeEntryModes(hydratedModes)
       setDirectFinalGrades(typeof parsed?.directFinalGrades === 'object' && parsed.directFinalGrades ? parsed.directFinalGrades : {})
-      setTermGrades(typeof parsed?.termGrades === 'object' && parsed.termGrades ? parsed.termGrades : {})
-      setTermFinalGrades(typeof parsed?.termFinalGrades === 'object' && parsed.termFinalGrades ? parsed.termFinalGrades : {})
       setExpectedGrades(typeof parsed?.expectedGrades === 'object' && parsed.expectedGrades ? parsed.expectedGrades : {})
       setPredictedSubjects(typeof parsed?.predictedSubjects === 'object' && parsed.predictedSubjects ? parsed.predictedSubjects : {})
       setCurrentStep(safeStep)
       setYearLevel(parsed?.yearLevel === 8 ? 8 : (parsed?.yearLevel === 9 ? 9 : null))
       setTargetGPA(getOptionalTargetFromPersisted(parsed))
       setStudentYearLevel(typeof parsed?.studentYearLevel === 'string' ? parsed.studentYearLevel : '')
-      setCurrentTerm(TERMS.includes(parsed?.currentTerm) ? parsed.currentTerm : getDetectedTerm())
-      setTermSelectionMode(parsed?.termSelectionMode === 'manual' ? 'manual' : 'auto')
       setActiveSubjectIndex(
         Number.isInteger(parsed?.activeSubjectIndex)
           ? Math.max(0, Math.min(parsed.activeSubjectIndex, hydratedSubjects.length - 1))
@@ -538,16 +465,11 @@ function App() {
     const stateToPersist = {
       currentStep,
       selectedSubjects,
-      currentTerm,
-      gradeEntryModes,
-      termGrades,
       directFinalGrades,
-      termFinalGrades,
       expectedGrades,
       predictedSubjects,
       targetGPA,
       activeSubjectIndex,
-      termSelectionMode,
       yearLevel,
       studentYearLevel
     }
@@ -562,16 +484,11 @@ function App() {
     hasHydratedState,
     currentStep,
     selectedSubjects,
-    currentTerm,
-    gradeEntryModes,
-    termGrades,
     directFinalGrades,
-    termFinalGrades,
     expectedGrades,
     predictedSubjects,
     targetGPA,
     activeSubjectIndex,
-    termSelectionMode,
     yearLevel,
     studentYearLevel
   ])
@@ -585,7 +502,7 @@ function App() {
       }
     })
     setFinalGrades(newFinalGrades)
-  }, [directFinalGrades, gradeEntryModes, termGrades, termFinalGrades, currentTerm, selectedSubjects])
+  }, [directFinalGrades, selectedSubjects])
 
   useEffect(() => {
     if (selectedSubjects.length > 0) {
@@ -608,10 +525,7 @@ function App() {
       const updatedSubjects = selectedSubjects.filter(item => item !== subject)
       setSelectedSubjects(updatedSubjects)
       setDirectFinalGrades(removeSubjectKey(directFinalGrades, subject))
-      setTermGrades(removeSubjectKey(termGrades, subject))
-      setTermFinalGrades(removeSubjectKey(termFinalGrades, subject))
       setExpectedGrades(removeSubjectKey(expectedGrades, subject))
-      setGradeEntryModes(removeSubjectKey(gradeEntryModes, subject))
       setIsTargetTransitioning(false)
       if (currentStep !== 'selection') setCurrentStep('selection')
       return
@@ -622,7 +536,6 @@ function App() {
     const updatedSubjects = [...selectedSubjects, subject]
     const updatedElectiveCount = updatedSubjects.filter(item => !yearCore.includes(item)).length
     setSelectedSubjects(updatedSubjects)
-    setGradeEntryModes(prev => ({ ...prev, [subject]: 'final' }))
 
     if (updatedElectiveCount === yearMaxElectives) {
       setIsTargetTransitioning(true)
@@ -660,33 +573,6 @@ function App() {
 
   const handleGradeSelect = (subject, grade) => {
     setDirectFinalGrades(prev => ({ ...prev, [subject]: grade }))
-  }
-
-  const handleGradeEntryModeToggle = (subject) => {
-    const currentMode = gradeEntryModes[subject] || 'final'
-    const newMode = currentMode === 'terms' ? 'final' : 'terms'
-
-    setGradeEntryModes(prev => ({ ...prev, [subject]: newMode }))
-
-    if (newMode === 'final') {
-      const newTermGrades = { ...termGrades }
-      delete newTermGrades[subject]
-      setTermGrades(newTermGrades)
-    } else {
-      const newDirectFinalGrades = { ...directFinalGrades }
-      delete newDirectFinalGrades[subject]
-      setDirectFinalGrades(newDirectFinalGrades)
-    }
-  }
-
-  const handleTermGradeChange = (subject, term, grade) => {
-    setTermGrades(prev => ({
-      ...prev,
-      [subject]: {
-        ...(prev[subject] || {}),
-        [term]: grade
-      }
-    }))
   }
 
   const handleTogglePredicted = (subject) => {
@@ -767,10 +653,7 @@ function App() {
     setCurrentStep('selection')
     setSelectedSubjects([...YEAR_CURRICULA[yearLevel || 9].core])
     setActiveSubjectIndex(0)
-    setGradeEntryModes(createDefaultGradeModes(yearLevel || 9))
-    setTermGrades({})
     setDirectFinalGrades({})
-    setTermFinalGrades({})
     setExpectedGrades({})
     setFinalGrades({})
     setGpa(null)
@@ -779,8 +662,6 @@ function App() {
     setTargetInput('')
     setSaveStatusMessage('')
     setSaveErrorMessage('')
-    setCurrentTerm(getDetectedTerm())
-    setTermSelectionMode('auto')
   }
 
   const persistLocalGpaSnapshot = (payload) => {
@@ -816,20 +697,14 @@ function App() {
     const subjectSummaries = selectedSubjects.map(subject => ({
       subject,
       weight: (yearLevel ? getSubjectsForYear(yearLevel) : SUBJECTS)[subject],
-      entryMode: gradeEntryModes[subject] || 'final',
       finalGrade: finalGrades[subject]?.grade ?? null,
       finalPoints: finalGrades[subject]?.points ?? null,
-      termGrades: termGrades[subject] ?? {},
-      directFinalGrade: directFinalGrades[subject] ?? null,
-      semesterFinalGrade: termFinalGrades[subject] ?? null
+      directFinalGrade: directFinalGrades[subject] ?? null
     }))
 
     const payload = {
       studentName: studentName.trim(),
       yearLevel: studentYearLevel.trim(),
-      currentTerm,
-      detectedTerm: getDetectedTerm(),
-      termSelectionMode,
       gpa: gpa !== null ? Number(gpa.toFixed(2)) : null,
       yearlyGpa: yearlyGPA !== null ? Number(yearlyGPA.toFixed(2)) : null,
       targetGpa: targetGPA,
@@ -915,10 +790,7 @@ function App() {
     setYearLevel(year)
     setSelectedSubjects([...YEAR_CURRICULA[year].core])
     setActiveSubjectIndex(0)
-    setGradeEntryModes(createDefaultGradeModes(year))
-    setTermGrades({})
     setDirectFinalGrades({})
-    setTermFinalGrades({})
     setExpectedGrades({})
     setFinalGrades({})
     setGpa(null)
@@ -942,10 +814,7 @@ function App() {
     setYearLevel(year)
     setSelectedSubjects([...YEAR_CURRICULA[year].core])
     setActiveSubjectIndex(0)
-    setGradeEntryModes(createDefaultGradeModes(year))
-    setTermGrades({})
     setDirectFinalGrades({})
-    setTermFinalGrades({})
     setExpectedGrades({})
     setFinalGrades({})
     setGpa(null)
@@ -962,27 +831,21 @@ function App() {
     <main className="gpa-final-page" id="main-content">
       {renderTopBar('GPA Calculator')}
       <section className="gpa-year-stage" aria-label="Choose year level">
-        <div className="gpa-year-eyebrow">Step 1 of 4</div>
-        <h1 id="year-label" className="gpa-year-question">Which year are you in?</h1>
-        <p className="gpa-year-help">Pick the year you're calculating for. Year 8 uses a different formula and a different elective list than Year 9 and above.</p>
+        <h1 id="year-label" className="gpa-year-question">Which year?</h1>
         <div className="gpa-year-choices" role="group" aria-labelledby="year-label">
           <button
             type="button"
             className="gpa-year-option"
             onClick={() => handleYearSelect(8)}
           >
-            <span className="gpa-year-option-kicker">Year 8</span>
-            <span className="gpa-year-option-title">Middle school formula</span>
-            <span className="gpa-year-option-note">Three elective slots, no PE Extension or Geography</span>
+            <span className="gpa-year-option-title">Year 8</span>
           </button>
           <button
             type="button"
             className="gpa-year-option"
             onClick={() => handleYearSelect(9)}
           >
-            <span className="gpa-year-option-kicker">Year 9 and above</span>
-            <span className="gpa-year-option-title">Senior school formula</span>
-            <span className="gpa-year-option-note">Four elective slots with the full list including PE Extension</span>
+            <span className="gpa-year-option-title">Year 9</span>
           </button>
         </div>
       </section>
@@ -1126,13 +989,6 @@ function App() {
         <div className="gpa-mode-row">
           <button
             type="button"
-            className={`gpa-mode-toggle${(gradeEntryModes[activeSubject] || 'final') === 'terms' ? ' is-terms' : ''}`}
-            onClick={() => handleGradeEntryModeToggle(activeSubject)}
-          >
-            {(gradeEntryModes[activeSubject] || 'final') === 'terms' ? 'Using term grades' : 'Enter term grades'}
-          </button>
-          <button
-            type="button"
             className={`gpa-prediction-toggle${predictedSubjects[activeSubject] ? ' is-predicted' : ''}`}
             onClick={() => handleTogglePredicted(activeSubject)}
           >
@@ -1140,52 +996,26 @@ function App() {
           </button>
         </div>
         <div key={selectedGrade || 'empty'} className={`gpa-selected-grade-display${selectedGrade ? ' gpa-grade-just-selected' : ''}`}>
-          {selectedGrade || <span className="gpa-no-grade">{gradeEntryModes[activeSubject] === 'terms' ? 'Enter a term grade' : 'Pick a grade below'}</span>}
+          {selectedGrade || <span className="gpa-no-grade">Pick a grade below</span>}
         </div>
-        {(gradeEntryModes[activeSubject] || 'final') === 'terms' ? (
-          <div className="gpa-term-grades">
-            {getTermsForSubject().map(term => {
-              const termGrade = termGrades[activeSubject]?.[term] || ''
-              return (
-                <div key={term} className="gpa-term-grade-row">
-                  <span className="gpa-term-label">{term}</span>
-                  <div className="gpa-term-buttons">
-                    {GRADE_OPTIONS.map(grade => (
-                      <button
-                        type="button"
-                        key={grade}
-                        className={`gpa-term-button${termGrade === grade ? ' is-selected' : ''}`}
-                        onClick={() => handleTermGradeChange(activeSubject, term, grade)}
-                        aria-pressed={termGrade === grade}
-                      >
-                        {grade}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        ) : (
-          <div className="gpa-grade-button-table" aria-label={`Grade buttons for ${activeSubject}`}>
-            {GRADE_ROWS.map((row, rowIndex) => (
-              <div className="gpa-grade-button-row" key={row.join('-')}>
-                {row.map((grade, colIndex) => (
-                  <button
-                    type="button"
-                    key={grade}
-                    className={`gpa-grade-button${selectedGrade === grade ? ' is-selected' : ''}`}
-                    onClick={() => handleGradeSelect(activeSubject, grade)}
-                    aria-pressed={selectedGrade === grade}
-                    style={{ animationDelay: `${(rowIndex * 3 + colIndex) * 25}ms` }}
-                  >
-                    {grade}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="gpa-grade-button-table" aria-label={`Grade buttons for ${activeSubject}`}>
+          {GRADE_ROWS.map((row, rowIndex) => (
+            <div className="gpa-grade-button-row" key={row.join('-')}>
+              {row.map((grade, colIndex) => (
+                <button
+                  type="button"
+                  key={grade}
+                  className={`gpa-grade-button${selectedGrade === grade ? ' is-selected' : ''}`}
+                  onClick={() => handleGradeSelect(activeSubject, grade)}
+                  aria-pressed={selectedGrade === grade}
+                  style={{ animationDelay: `${(rowIndex * 3 + colIndex) * 25}ms` }}
+                >
+                  {grade}
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
         <div className="gpa-grade-nav-buttons">
           <button
             type="button"
