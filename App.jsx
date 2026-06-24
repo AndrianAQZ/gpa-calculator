@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
 import { Input } from '@/components/ui/input.jsx'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog.jsx'
-import { Calculator, GraduationCap, BookOpen, Target, Sparkles, Calendar, Save, FileText, Trophy, AlertTriangle, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Calculator, GraduationCap, BookOpen, Target, Sparkles, Calendar, Save, FileText, Trophy, AlertTriangle, ToggleLeft, ToggleRight, ChevronLeft, ChevronRight, Palette } from 'lucide-react'
 import './App.css'
 
 const SUBJECTS = {
@@ -14,8 +14,8 @@ const SUBJECTS = {
   'Media': 0.3,
   'Drama': 0.3,
   'Music': 0.3,
-  'Spanish': 0.6,
-  'Japanese': 0.6,
+  'Spanish': 0.3,
+  'Japanese': 0.3,
   'HPE': 0.6,
   'Digital': 0.3,
   'Design': 0.3,
@@ -50,6 +50,43 @@ const SEMESTER_SUBJECTS = new Set([
 ])
 const GOOGLE_DOC_ID = '1ICuIvuBC-uTpdKCgQWYNKqAfPfnOzOQPIyLYMoXhqvo'
 const GOOGLE_APPS_SCRIPT_URL = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_URL
+const LOCAL_SAVE_KEY = 'gpaCalculatorSavedRecords'
+const THEME_STORAGE_KEY = 'gpaCalculatorTheme'
+const DEFAULT_THEME = {
+  primary: '#2563eb',
+  primaryStrong: '#1746a2',
+  background: '#f3f6fb',
+  surface: '#ffffff',
+  text: '#172033',
+  accent: '#0f6f43'
+}
+const THEME_PRESETS = {
+  Focus: DEFAULT_THEME,
+  Ocean: {
+    primary: '#0f766e',
+    primaryStrong: '#115e59',
+    background: '#eefcf9',
+    surface: '#ffffff',
+    text: '#12312d',
+    accent: '#2563eb'
+  },
+  Sunset: {
+    primary: '#dc2626',
+    primaryStrong: '#991b1b',
+    background: '#fff7ed',
+    surface: '#ffffff',
+    text: '#2f1d14',
+    accent: '#ea580c'
+  },
+  Midnight: {
+    primary: '#8b5cf6',
+    primaryStrong: '#6d28d9',
+    background: '#111827',
+    surface: '#1f2937',
+    text: '#f8fafc',
+    accent: '#22c55e'
+  }
+}
 
 function App() {
   const [currentStep, setCurrentStep] = useState('selection')
@@ -66,11 +103,36 @@ function App() {
   const [studentName, setStudentName] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [saveAttempts, setSaveAttempts] = useState(0)
+  const [activeSubjectIndex, setActiveSubjectIndex] = useState(0)
+  const [theme, setTheme] = useState(() => {
+    try {
+      const savedTheme = localStorage.getItem(THEME_STORAGE_KEY)
+      return savedTheme ? { ...DEFAULT_THEME, ...JSON.parse(savedTheme) } : DEFAULT_THEME
+    } catch {
+      return DEFAULT_THEME
+    }
+  })
+
+  const appThemeStyle = {
+    '--bg': theme.background,
+    '--surface': theme.surface,
+    '--surface-soft': theme.surface,
+    '--surface-blue': theme.background,
+    '--text': theme.text,
+    '--text-muted': theme.text,
+    '--text-soft': theme.text,
+    '--primary': theme.primary,
+    '--primary-strong': theme.primaryStrong,
+    '--primary-soft': `${theme.primary}22`,
+    '--success': theme.accent,
+    '--success-soft': `${theme.accent}22`
+  }
 
   const handleSubjectToggle = (subject, checked) => {
     if (checked) {
       if (selectedSubjects.length < MAX_SUBJECTS) {
         setSelectedSubjects([...selectedSubjects, subject])
+        setActiveSubjectIndex(selectedSubjects.length)
         // Default to terms mode for new subjects
         setGradeEntryModes(prev => ({ ...prev, [subject]: 'terms' }))
       } else {
@@ -78,6 +140,7 @@ function App() {
       }
     } else {
       setSelectedSubjects(selectedSubjects.filter(s => s !== subject))
+      setActiveSubjectIndex(index => Math.max(0, Math.min(index, selectedSubjects.length - 2)))
       const newTermGrades = { ...termGrades }
       delete newTermGrades[subject]
       setTermGrades(newTermGrades)
@@ -198,6 +261,17 @@ function App() {
       ...prev,
       [subject]: grade
     }))
+  }
+
+  const handleThemeChange = (key, value) => {
+    setTheme(prev => ({
+      ...prev,
+      [key]: value
+    }))
+  }
+
+  const applyThemePreset = (presetName) => {
+    setTheme(THEME_PRESETS[presetName] || DEFAULT_THEME)
   }
 
   const calculateSubjectFinalGrade = (subject) => {
@@ -325,11 +399,6 @@ function App() {
       return
     }
 
-    if (!GOOGLE_APPS_SCRIPT_URL) {
-      alert('Google Apps Script URL is not configured. Please set VITE_GOOGLE_APPS_SCRIPT_URL in your environment.')
-      return
-    }
-
     setIsSaving(true)
     try {
       const subjectSummaries = selectedSubjects.map(subject => ({
@@ -351,6 +420,17 @@ function App() {
         subjects: subjectSummaries,
         timestamp: new Date().toISOString(),
         googleDocId: GOOGLE_DOC_ID
+      }
+
+      const existingRecords = JSON.parse(localStorage.getItem(LOCAL_SAVE_KEY) || '[]')
+      localStorage.setItem(LOCAL_SAVE_KEY, JSON.stringify([payload, ...existingRecords].slice(0, 25)))
+
+      if (!GOOGLE_APPS_SCRIPT_URL) {
+        alert(`Saved ${studentName.trim()}'s GPA (${yearlyGPA?.toFixed(2)}) on this device. Google Doc sync is not configured yet.`)
+        setShowSaveDialog(false)
+        setStudentName('')
+        setSaveAttempts(0)
+        return
       }
 
       const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
@@ -445,6 +525,14 @@ function App() {
     }
   }, [yearlyGPA, finalGrades, selectedSubjects, saveAttempts])
 
+  useEffect(() => {
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(theme))
+  }, [theme])
+
+  useEffect(() => {
+    setActiveSubjectIndex(index => Math.max(0, Math.min(index, selectedSubjects.length - 1)))
+  }, [selectedSubjects])
+
   const proceedToGradeEntry = () => {
     if (selectedSubjects.length > 0) {
       setCurrentStep('gradeEntry')
@@ -463,6 +551,7 @@ function App() {
     setGpa(null)
     setYearlyGPA(null)
     setSaveAttempts(0)
+    setActiveSubjectIndex(0)
   }
 
   const getSubjectTermsCompleted = (subject) => {
@@ -477,9 +566,18 @@ function App() {
     return mode === 'terms' ? 'Term Grades' : 'Final Grade (D2L)'
   }
 
+  const activeSubject = selectedSubjects[activeSubjectIndex] || selectedSubjects[0]
+  const activeSubjectNumber = selectedSubjects.length === 0 ? 0 : activeSubjectIndex + 1
+  const goToNextSubject = () => {
+    setActiveSubjectIndex(index => Math.min(index + 1, selectedSubjects.length - 1))
+  }
+  const goToPreviousSubject = () => {
+    setActiveSubjectIndex(index => Math.max(index - 1, 0))
+  }
+
   if (currentStep === 'selection') {
     return (
-      <div className="liquid-glass-app">
+      <div className="liquid-glass-app" style={appThemeStyle}>
         <div className="liquid-glass-background"></div>
         <div className="liquid-glass-container">
           <div className="liquid-glass-header">
@@ -547,7 +645,7 @@ function App() {
   }
 
   return (
-    <div className="liquid-glass-app">
+    <div className="liquid-glass-app" style={appThemeStyle}>
       <div className="liquid-glass-background"></div>
       <div className="liquid-glass-container liquid-glass-grade-container">
         <div className="liquid-glass-header">
@@ -572,15 +670,15 @@ function App() {
                   Enter Grades
                 </div>
                 <p className="liquid-glass-card-description">
-                  Choose between term-based calculation or direct final grade entry for each subject
+                  Use the term selector to preview what grade the calculator thinks you will get at different points in the year.
                 </p>
               </div>
               <div className="liquid-glass-card-content">
                 <div className="liquid-glass-term-selector">
                   <div className="liquid-glass-term-selector-label-group">
-                    <span className="liquid-glass-term-selector-label">Current Term</span>
+                    <span className="liquid-glass-term-selector-label">Preview Term</span>
                     <span className="liquid-glass-term-selector-description">
-                      Semester subjects only ask for the grades that apply right now.
+                      Change this manually to see the predicted grade for any term.
                     </span>
                   </div>
                   <Select value={currentTerm} onValueChange={setCurrentTerm}>
@@ -627,8 +725,42 @@ function App() {
                   </div>
                 )}
                 
+                <div className="liquid-glass-stepper-bar">
+                  <button
+                    onClick={goToPreviousSubject}
+                    disabled={activeSubjectIndex === 0}
+                    className="liquid-glass-step-button"
+                  >
+                    <ChevronLeft className="liquid-glass-button-icon-left" />
+                    Previous
+                  </button>
+                  <div className="liquid-glass-step-status">
+                    Subject {activeSubjectNumber} of {selectedSubjects.length}
+                  </div>
+                  <button
+                    onClick={goToNextSubject}
+                    disabled={activeSubjectIndex >= selectedSubjects.length - 1}
+                    className="liquid-glass-step-button liquid-glass-next-button"
+                  >
+                    Next
+                    <ChevronRight className="liquid-glass-button-icon" />
+                  </button>
+                </div>
+
+                <div className="liquid-glass-subject-tabs">
+                  {selectedSubjects.map((subject, index) => (
+                    <button
+                      key={subject}
+                      onClick={() => setActiveSubjectIndex(index)}
+                      className={`liquid-glass-subject-tab ${index === activeSubjectIndex ? 'liquid-glass-subject-tab-active' : ''}`}
+                    >
+                      {subject}
+                    </button>
+                  ))}
+                </div>
+                
                 <div className="liquid-glass-subjects-terms">
-                  {selectedSubjects.map(subject => {
+                  {activeSubject && [activeSubject].map(subject => {
                     const mode = gradeEntryModes[subject] || 'terms'
                     const termsForSubject = getTermsForSubject(subject)
                     const termsCompleted = getSubjectTermsCompleted(subject)
@@ -758,6 +890,16 @@ function App() {
                             </div>
                           </div>
                         )}
+                        <div className="liquid-glass-subject-next-row">
+                          <button
+                            onClick={goToNextSubject}
+                            disabled={activeSubjectIndex >= selectedSubjects.length - 1}
+                            className="liquid-glass-button liquid-glass-primary-button"
+                          >
+                            <span>{activeSubjectIndex >= selectedSubjects.length - 1 ? 'All Subjects Entered' : 'Next Subject'}</span>
+                            <ChevronRight className="liquid-glass-button-icon" />
+                          </button>
+                        </div>
                       </div>
                     )
                   })}
@@ -801,6 +943,78 @@ function App() {
                 </div>
               </div>
             )}
+
+            <div className="liquid-glass-card liquid-glass-summary-card">
+              <div className="liquid-glass-card-header">
+                <div className="liquid-glass-card-title">
+                  <Trophy className="liquid-glass-card-icon" />
+                  Grade Summary
+                </div>
+                <p className="liquid-glass-card-description">
+                  Quick check of every subject grade.
+                </p>
+              </div>
+              <div className="liquid-glass-card-content">
+                <div className="liquid-glass-grade-summary-list">
+                  {selectedSubjects.map(subject => (
+                    <div key={subject} className={`liquid-glass-grade-summary-item ${subject === 'English' ? 'liquid-glass-english-summary' : ''}`}>
+                      <span>{subject}</span>
+                      <strong>{finalGrades[subject]?.grade || 'Not entered'}</strong>
+                    </div>
+                  ))}
+                </div>
+                {selectedSubjects.includes('English') && (
+                  <div className="liquid-glass-english-callout">
+                    English is currently {finalGrades.English?.grade || 'not entered yet'}.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="liquid-glass-card liquid-glass-theme-card">
+              <div className="liquid-glass-card-header">
+                <div className="liquid-glass-card-title">
+                  <Palette className="liquid-glass-card-icon" />
+                  Theme
+                </div>
+                <p className="liquid-glass-card-description">
+                  Change the colors and keep them for next time.
+                </p>
+              </div>
+              <div className="liquid-glass-card-content">
+                <Select onValueChange={applyThemePreset}>
+                  <SelectTrigger className="liquid-glass-select">
+                    <SelectValue placeholder="Choose a preset" />
+                  </SelectTrigger>
+                  <SelectContent className="liquid-glass-select-content">
+                    {Object.keys(THEME_PRESETS).map(preset => (
+                      <SelectItem key={preset} value={preset} className="liquid-glass-select-item">
+                        {preset}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="liquid-glass-theme-grid">
+                  {[
+                    ['primary', 'Main'],
+                    ['primaryStrong', 'Dark main'],
+                    ['background', 'Background'],
+                    ['surface', 'Cards'],
+                    ['text', 'Text'],
+                    ['accent', 'Accent']
+                  ].map(([key, label]) => (
+                    <label key={key} className="liquid-glass-color-control">
+                      <span>{label}</span>
+                      <input
+                        type="color"
+                        value={theme[key]}
+                        onChange={(event) => handleThemeChange(key, event.target.value)}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
 
             {/* Grade Requirements */}
             <div className="liquid-glass-card liquid-glass-requirements-card">
