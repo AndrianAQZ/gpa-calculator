@@ -240,7 +240,11 @@ const contrastRatio = (a, b) => {
 
 const isInappropriateName = (name) => {
   const lowerName = name.toLowerCase().trim()
-  const filtered = ['fuck', 'shit', 'cunt', 'nigger', 'nazi', 'hitler', 'kkk', 'pussy', 'whore', 'slut', 'bitch', 'bastard', 'faggot', 'penis', 'vagina', 'porn', 'rape']
+  const filtered = [
+    'fuck', 'shit', 'bitch', 'cunt', 'nigger', 'nigga', 'fag',
+    'faggot', 'penis', 'vagina', 'porn', 'hitler', 'nazi', 'kkk',
+    'pussy', 'whore', 'slut', 'bastard', 'rape', 'terrorist', 'kys'
+  ]
 
   const tokens = lowerName.split(/[^a-z]+/).filter(Boolean)
   if (filtered.some(word => tokens.includes(word))) return true
@@ -255,11 +259,9 @@ function App() {
   const [selectedSubjects, setSelectedSubjects] = useState(() => [...YEAR_CURRICULA[9].core])
   const [activeSubjectIndex, setActiveSubjectIndex] = useState(0)
   const [directFinalGrades, setDirectFinalGrades] = useState({})
-  const [expectedGrades, setExpectedGrades] = useState({})
   const [predictedSubjects, setPredictedSubjects] = useState({})
   const [finalGrades, setFinalGrades] = useState({})
   const [gpa, setGpa] = useState(null)
-  const [yearlyGPA, setYearlyGPA] = useState(null)
   const [targetGPA, setTargetGPA] = useState(null)
   const [targetInput, setTargetInput] = useState('')
   const [settingsTargetInput, setSettingsTargetInput] = useState('')
@@ -310,14 +312,31 @@ function App() {
     maximumFractionDigits: 2
   })
   const targetRequirements = targetGPA ? calculateRequiredGrades(targetGPA) : null
+  // Derive muted/soft variants by mixing theme colors for proper contrast
+  const themeTextLum = relativeLuminance(theme.text)
+  const isDarkTheme = themeTextLum > relativeLuminance(theme.background)
+  const mutedMix = isDarkTheme ? 0.55 : 0.6
+  const softMix = isDarkTheme ? 0.4 : 0.45
+  const lineMix = isDarkTheme ? 0.25 : 0.82
+  const lineStrongMix = isDarkTheme ? 0.35 : 0.68
+  const mixWithBg = (hex, factor) => {
+    const t = hexToRgb(hex), b = hexToRgb(theme.background)
+    if (!t || !b) return hex
+    const r = Math.round(t.r * factor + b.r * (1 - factor))
+    const g = Math.round(t.g * factor + b.g * (1 - factor))
+    const bl = Math.round(t.b * factor + b.b * (1 - factor))
+    return `#${((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1)}`
+  }
   const appThemeStyle = {
     '--bg': theme.background,
     '--surface': theme.surface,
     '--surface-soft': theme.surface,
     '--surface-blue': theme.background,
     '--text': theme.text,
-    '--text-muted': theme.text,
-    '--text-soft': theme.text,
+    '--text-muted': mixWithBg(theme.text, mutedMix),
+    '--text-soft': mixWithBg(theme.text, softMix),
+    '--line': mixWithBg(theme.text, lineMix),
+    '--line-strong': mixWithBg(theme.text, lineStrongMix),
     '--primary': theme.primary,
     '--primary-strong': theme.primaryStrong,
     '--primary-soft': `${theme.primary}20`,
@@ -416,8 +435,6 @@ function App() {
     }
   }
 
-  const calculateYearlyGPA = () => calculateGPA()
-
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(LOCAL_STORAGE_KEY)
@@ -439,7 +456,6 @@ function App() {
 
       setSelectedSubjects(hydratedSubjects)
       setDirectFinalGrades(typeof parsed?.directFinalGrades === 'object' && parsed.directFinalGrades ? parsed.directFinalGrades : {})
-      setExpectedGrades(typeof parsed?.expectedGrades === 'object' && parsed.expectedGrades ? parsed.expectedGrades : {})
       setPredictedSubjects(typeof parsed?.predictedSubjects === 'object' && parsed.predictedSubjects ? parsed.predictedSubjects : {})
       setCurrentStep(safeStep)
       setYearLevel(hasValidYear ? parsed.yearLevel : null)
@@ -473,7 +489,6 @@ function App() {
       currentStep,
       selectedSubjects,
       directFinalGrades,
-      expectedGrades,
       predictedSubjects,
       targetGPA,
       activeSubjectIndex,
@@ -492,7 +507,6 @@ function App() {
     currentStep,
     selectedSubjects,
     directFinalGrades,
-    expectedGrades,
     predictedSubjects,
     targetGPA,
     activeSubjectIndex,
@@ -515,7 +529,6 @@ function App() {
     if (selectedSubjects.length > 0) {
       const currentGPA = calculateGPA(false)
       setGpa(currentGPA)
-      setYearlyGPA(calculateYearlyGPA())
     }
   }, [finalGrades, selectedSubjects, predictedSubjects, yearLevel])
 
@@ -553,7 +566,6 @@ function App() {
       clearAutoAdvance()
       setSelectedSubjects(prev => prev.filter(item => item !== subject))
       setDirectFinalGrades(prev => removeSubjectKey(prev, subject))
-      setExpectedGrades(prev => removeSubjectKey(prev, subject))
       setPredictedSubjects(prev => removeSubjectKey(prev, subject))
       setIsTargetTransitioning(false)
       if (currentStep !== 'selection') setCurrentStep('selection')
@@ -670,6 +682,7 @@ function App() {
     const value = Number(settingsTargetInput)
     if (settingsTargetInput.trim() && Number.isFinite(value) && value >= MIN_GPA_VALUE && value <= MAX_GPA_VALUE) {
       setTargetGPA(value)
+      setTargetInput(String(value))
       setSettingsTargetInput('')
     }
   }
@@ -679,38 +692,37 @@ function App() {
     setSelectedSubjects([...YEAR_CURRICULA[yearLevel || 9].core])
     setActiveSubjectIndex(0)
     setDirectFinalGrades({})
-    setExpectedGrades({})
+    setPredictedSubjects({})
     setFinalGrades({})
     setGpa(null)
-    setYearlyGPA(null)
     setTargetGPA(null)
     setTargetInput('')
     setSaveStatusMessage('')
     setSaveErrorMessage('')
+    setPredictedSubjects({})
+    setStudentName('')
+    setStudentYearLevel('')
   }
 
-  const persistLocalGpaSnapshot = (payload) => {
-    try {
-      const snapshotKey = `gpa-calculator-snapshot-${Date.now()}`
-      window.localStorage.setItem(snapshotKey, JSON.stringify(payload))
-      return true
-    } catch {
-      return false
-    }
+  const persistLocalGpaSnapshot = (_payload) => {
+    return true
   }
 
   const saveSnapshotToGoogleDoc = async () => {
     if (!studentName.trim()) {
+      setSaveStatusMessage('')
       setSaveErrorMessage('Enter your name before saving.')
       return
     }
 
     if (!studentYearLevel.trim()) {
+      setSaveStatusMessage('')
       setSaveErrorMessage('Enter your year level before saving.')
       return
     }
 
     if (isInappropriateName(studentName)) {
+      setSaveStatusMessage('')
       setSaveErrorMessage('That name looks invalid. Please use your real name.')
       return
     }
@@ -727,15 +739,18 @@ function App() {
       directFinalGrade: directFinalGrades[subject] ?? null
     }))
 
+    const folderYearLevel = yearLevel ? `Year ${yearLevel}` : (studentYearLevel.trim() || 'Unknown Year')
+    const currentTerm = studentYearLevel.includes('Term') ? studentYearLevel : 'Term 1'
+
     const payload = {
       studentName: studentName.trim(),
-      yearLevel: studentYearLevel.trim(),
+      yearLevel: folderYearLevel,
       gpa: gpa !== null ? Number(gpa.toFixed(2)) : null,
-      yearlyGpa: yearlyGPA !== null ? Number(yearlyGPA.toFixed(2)) : null,
       targetGpa: targetGPA,
       completedSubjects: enteredFinalGradeCount,
       totalSubjects: selectedSubjects.length,
       subjects: subjectSummaries,
+      currentTerm: currentTerm,
       timestamp: new Date().toISOString()
     }
 
@@ -816,10 +831,8 @@ function App() {
     setSelectedSubjects([...YEAR_CURRICULA[year].core])
     setActiveSubjectIndex(0)
     setDirectFinalGrades({})
-    setExpectedGrades({})
     setFinalGrades({})
     setGpa(null)
-    setYearlyGPA(null)
     setTargetGPA(null)
     setTargetInput('')
     setPredictedSubjects({})
@@ -840,16 +853,16 @@ function App() {
     setSelectedSubjects([...YEAR_CURRICULA[year].core])
     setActiveSubjectIndex(0)
     setDirectFinalGrades({})
-    setExpectedGrades({})
     setFinalGrades({})
     setGpa(null)
-    setYearlyGPA(null)
     setTargetGPA(null)
     setTargetInput('')
     setPredictedSubjects({})
     setCurrentStep('selection')
     setYearChangeConfirm(null)
     setShowSettings(false)
+    setStudentName('')
+    setStudentYearLevel('')
   }
 
   const renderYearScreen = () => (
