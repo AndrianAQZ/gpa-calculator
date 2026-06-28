@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, ChevronRight, RotateCcw, Save, Settings, X } from 'lucide-react'
 import './App.css'
 
@@ -162,9 +162,11 @@ const getClosestGradeForPoints = (points) => {
   let closestGrade = 'F-'
   let closestDiff = Infinity
 
+  // GRADES is ordered high-to-low (A+ → F-). Using a strict `<` keeps the
+  // first (higher) grade on an exact tie instead of biasing toward the lower one.
   Object.entries(GRADES).forEach(([grade, value]) => {
     const diff = Math.abs(value - points)
-    if (diff <= closestDiff) {
+    if (diff < closestDiff) {
       closestGrade = grade
       closestDiff = diff
     }
@@ -280,6 +282,7 @@ function App() {
     }
   })
   const [showCoreSubjects, setShowCoreSubjects] = useState(false)
+  const autoAdvanceTimeoutRef = useRef(null)
 
   const yearCore = yearLevel ? YEAR_CURRICULA[yearLevel].core : YEAR_CURRICULA[9].core
   const yearElectives = yearLevel ? YEAR_CURRICULA[yearLevel].electives : YEAR_CURRICULA[9].electives
@@ -295,13 +298,13 @@ function App() {
   const allSubjectsEntered = enteredFinalGradeCount === selectedSubjects.length
   const closestGpaGrade = gpa && gpa > 0 ? getClosestGradeForPoints(gpa) : null
   const hasPredictedSubjects = useMemo(
-    () => Object.keys(predictedSubjects).length > 0,
-    [predictedSubjects]
+    () => selectedSubjects.some(subject => predictedSubjects[subject]),
+    [selectedSubjects, predictedSubjects]
   )
   const baseGpa = useMemo(() => {
     if (!selectedSubjects.length) return null
     return calculateGPA(true)
-  }, [finalGrades, selectedSubjects, predictedSubjects])
+  }, [finalGrades, selectedSubjects, predictedSubjects, yearLevel])
   const formatGpa = (value) => Number(value).toLocaleString(undefined, {
     minimumFractionDigits: Number.isInteger(Number(value)) ? 0 : 1,
     maximumFractionDigits: 2
@@ -424,18 +427,22 @@ function App() {
       }
 
       const parsed = JSON.parse(raw)
-      const persistedYearRaw = (parsed?.yearLevel === 8 || parsed?.yearLevel === 9) ? parsed.yearLevel : 9
+      const hasValidYear = parsed?.yearLevel === 8 || parsed?.yearLevel === 9
+      const persistedYearRaw = hasValidYear ? parsed.yearLevel : 9
       const hydratedSubjects = sanitizePersistedSubjects(parsed?.selectedSubjects, persistedYearRaw)
-      const safeStep = ['year', 'selection', 'target', 'gradeEntry', 'results'].includes(parsed?.currentStep)
+      const persistedStep = ['year', 'selection', 'target', 'gradeEntry', 'results'].includes(parsed?.currentStep)
         ? parsed.currentStep
         : 'selection'
+      // Without a valid saved year level we can't trust the curriculum/subjects,
+      // so send the user back to the year picker instead of a mismatched selection.
+      const safeStep = hasValidYear ? persistedStep : 'year'
 
       setSelectedSubjects(hydratedSubjects)
       setDirectFinalGrades(typeof parsed?.directFinalGrades === 'object' && parsed.directFinalGrades ? parsed.directFinalGrades : {})
       setExpectedGrades(typeof parsed?.expectedGrades === 'object' && parsed.expectedGrades ? parsed.expectedGrades : {})
       setPredictedSubjects(typeof parsed?.predictedSubjects === 'object' && parsed.predictedSubjects ? parsed.predictedSubjects : {})
       setCurrentStep(safeStep)
-      setYearLevel(parsed?.yearLevel === 8 ? 8 : (parsed?.yearLevel === 9 ? 9 : null))
+      setYearLevel(hasValidYear ? parsed.yearLevel : null)
       setTargetGPA(getOptionalTargetFromPersisted(parsed))
       setStudentYearLevel(typeof parsed?.studentYearLevel === 'string' ? parsed.studentYearLevel : '')
       setActiveSubjectIndex(
@@ -510,7 +517,7 @@ function App() {
       setGpa(currentGPA)
       setYearlyGPA(calculateYearlyGPA())
     }
-  }, [finalGrades, selectedSubjects, predictedSubjects])
+  }, [finalGrades, selectedSubjects, predictedSubjects, yearLevel])
 
   useEffect(() => {
     if (activeSubjectIndex > selectedSubjects.length - 1) {
@@ -518,14 +525,36 @@ function App() {
     }
   }, [activeSubjectIndex, selectedSubjects.length])
 
+  useEffect(() => () => {
+    if (autoAdvanceTimeoutRef.current) {
+      window.clearTimeout(autoAdvanceTimeoutRef.current)
+    }
+  }, [])
+
+  const clearAutoAdvance = () => {
+    if (autoAdvanceTimeoutRef.current) {
+      window.clearTimeout(autoAdvanceTimeoutRef.current)
+      autoAdvanceTimeoutRef.current = null
+    }
+  }
+
+  const removeSubjectKey = (source, subject) => {
+    const copy = { ...source }
+    delete copy[subject]
+    return copy
+  }
+
   const handleElectiveToggle = (subject) => {
     const isSelected = selectedSubjects.includes(subject)
 
     if (isSelected) {
-      const updatedSubjects = selectedSubjects.filter(item => item !== subject)
-      setSelectedSubjects(updatedSubjects)
-      setDirectFinalGrades(removeSubjectKey(directFinalGrades, subject))
-      setExpectedGrades(removeSubjectKey(expectedGrades, subject))
+      // Deselecting cancels a pending auto-advance so the user isn't yanked
+      // to the target screen after undoing their last pick.
+      clearAutoAdvance()
+      setSelectedSubjects(prev => prev.filter(item => item !== subject))
+      setDirectFinalGrades(prev => removeSubjectKey(prev, subject))
+      setExpectedGrades(prev => removeSubjectKey(prev, subject))
+      setPredictedSubjects(prev => removeSubjectKey(prev, subject))
       setIsTargetTransitioning(false)
       if (currentStep !== 'selection') setCurrentStep('selection')
       return
@@ -539,18 +568,14 @@ function App() {
 
     if (updatedElectiveCount === yearMaxElectives) {
       setIsTargetTransitioning(true)
-      window.setTimeout(() => {
+      clearAutoAdvance()
+      autoAdvanceTimeoutRef.current = window.setTimeout(() => {
+        autoAdvanceTimeoutRef.current = null
         setTargetInput(targetGPA ? String(targetGPA) : '')
         setIsTargetTransitioning(false)
         setCurrentStep('target')
       }, 280)
     }
-  }
-
-  const removeSubjectKey = (source, subject) => {
-    const copy = { ...source }
-    delete copy[subject]
-    return copy
   }
 
   const saveTargetAndContinue = () => {
