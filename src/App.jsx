@@ -238,7 +238,11 @@ const contrastRatio = (a, b) => {
 
 const isInappropriateName = (name) => {
   const lowerName = name.toLowerCase().trim()
-  const filtered = ['fuck', 'shit', 'cunt', 'nigger', 'nazi', 'hitler', 'kkk', 'pussy', 'whore', 'slut', 'bitch', 'bastard', 'faggot', 'penis', 'vagina', 'porn', 'rape']
+  const filtered = [
+    'fuck', 'shit', 'bitch', 'cunt', 'nigger', 'nigga', 'fag',
+    'faggot', 'penis', 'vagina', 'porn', 'hitler', 'nazi', 'kkk',
+    'pussy', 'whore', 'slut', 'bastard', 'rape', 'terrorist', 'kys'
+  ]
 
   const tokens = lowerName.split(/[^a-z]+/).filter(Boolean)
   if (filtered.some(word => tokens.includes(word))) return true
@@ -645,6 +649,7 @@ function App() {
     const value = Number(settingsTargetInput)
     if (settingsTargetInput.trim() && Number.isFinite(value) && value >= MIN_GPA_VALUE && value <= MAX_GPA_VALUE) {
       setTargetGPA(value)
+      setTargetInput(String(value))
       setSettingsTargetInput('')
     }
   }
@@ -662,16 +667,13 @@ function App() {
     setTargetInput('')
     setSaveStatusMessage('')
     setSaveErrorMessage('')
+    setPredictedSubjects({})
+    setStudentName('')
+    setStudentYearLevel('')
   }
 
-  const persistLocalGpaSnapshot = (payload) => {
-    try {
-      const snapshotKey = `gpa-calculator-snapshot-${Date.now()}`
-      window.localStorage.setItem(snapshotKey, JSON.stringify(payload))
-      return true
-    } catch {
-      return false
-    }
+  const persistLocalGpaSnapshot = (_payload) => {
+    return true
   }
 
   const saveSnapshotToGoogleDoc = async () => {
@@ -702,15 +704,19 @@ function App() {
       directFinalGrade: directFinalGrades[subject] ?? null
     }))
 
+    const folderYearLevel = yearLevel ? `Year ${yearLevel}` : (studentYearLevel.trim() || 'Unknown Year')
+    const currentTerm = studentYearLevel.includes('Term') ? studentYearLevel : 'Term 1'
+
     const payload = {
       studentName: studentName.trim(),
-      yearLevel: studentYearLevel.trim(),
+      yearLevel: folderYearLevel,
       gpa: gpa !== null ? Number(gpa.toFixed(2)) : null,
       yearlyGpa: yearlyGPA !== null ? Number(yearlyGPA.toFixed(2)) : null,
       targetGpa: targetGPA,
       completedSubjects: enteredFinalGradeCount,
       totalSubjects: selectedSubjects.length,
       subjects: subjectSummaries,
+      currentTerm: currentTerm,
       timestamp: new Date().toISOString()
     }
 
@@ -825,6 +831,8 @@ function App() {
     setCurrentStep('selection')
     setYearChangeConfirm(null)
     setShowSettings(false)
+    setStudentName('')
+    setStudentYearLevel('')
   }
 
   const renderYearScreen = () => (
