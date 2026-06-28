@@ -164,7 +164,7 @@ const getClosestGradeForPoints = (points) => {
 
   Object.entries(GRADES).forEach(([grade, value]) => {
     const diff = Math.abs(value - points)
-    if (diff <= closestDiff) {
+    if (diff < closestDiff) {
       closestGrade = grade
       closestDiff = diff
     }
@@ -299,7 +299,7 @@ function App() {
   const baseGpa = useMemo(() => {
     if (!selectedSubjects.length) return null
     return calculateGPA(true)
-  }, [finalGrades, selectedSubjects, predictedSubjects])
+  }, [finalGrades, selectedSubjects, predictedSubjects, yearLevel])
   const formatGpa = (value) => Number(value).toLocaleString(undefined, {
     minimumFractionDigits: Number.isInteger(Number(value)) ? 0 : 1,
     maximumFractionDigits: 2
@@ -519,7 +519,7 @@ function App() {
       const currentGPA = calculateGPA(false)
       setGpa(currentGPA)
     }
-  }, [finalGrades, selectedSubjects, predictedSubjects])
+  }, [finalGrades, selectedSubjects, predictedSubjects, yearLevel])
 
   useEffect(() => {
     if (activeSubjectIndex > selectedSubjects.length - 1) {
@@ -534,6 +534,7 @@ function App() {
       const updatedSubjects = selectedSubjects.filter(item => item !== subject)
       setSelectedSubjects(updatedSubjects)
       setDirectFinalGrades(removeSubjectKey(directFinalGrades, subject))
+      setPredictedSubjects(removeSubjectKey(predictedSubjects, subject))
       setIsTargetTransitioning(false)
       if (currentStep !== 'selection') setCurrentStep('selection')
       return
@@ -662,6 +663,7 @@ function App() {
     setSelectedSubjects([...YEAR_CURRICULA[yearLevel || 9].core])
     setActiveSubjectIndex(0)
     setDirectFinalGrades({})
+    setPredictedSubjects({})
     setFinalGrades({})
     setGpa(null)
     setTargetGPA(null)
@@ -692,16 +694,19 @@ function App() {
 
   const saveSnapshotToGoogleDoc = async () => {
     if (!studentName.trim()) {
+      setSaveStatusMessage('')
       setSaveErrorMessage('Enter your name before saving.')
       return
     }
 
     if (!studentYearLevel.trim()) {
+      setSaveStatusMessage('')
       setSaveErrorMessage('Enter your year level before saving.')
       return
     }
 
     if (isInappropriateName(studentName)) {
+      setSaveStatusMessage('')
       setSaveErrorMessage('That name looks invalid. Please use your real name.')
       return
     }
