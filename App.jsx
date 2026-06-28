@@ -364,7 +364,8 @@ function App() {
       return { possible: currentGPA >= targetGPA, grades: {} };
     }
 
-    const targetTotalScore = targetGPA * 5.8;
+    const totalWeight = totalKnownWeight + remainingWeight
+    const targetTotalScore = targetGPA * totalWeight;
     const requiredScoreFromMissing = targetTotalScore - currentWeightedScore;
     const averageRequiredGrade = requiredScoreFromMissing / remainingWeight;
     
